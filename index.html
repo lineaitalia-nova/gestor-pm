@@ -168,12 +168,13 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
   <div class="view" id="v-bitacora"></div>
   <div class="view" id="v-solicitudes"></div>
   <div class="view" id="v-proyecto"></div>
-  <div class="foot">Gestor de Proyectos Especiales · Línea Italia · <span id="syncf" style="font-weight:600">Firebase: iniciando…</span> · v25</div>
+  <div class="foot">Gestor de Proyectos Especiales · Línea Italia · <span id="syncf" style="font-weight:600">Firebase: iniciando…</span> · v26 (auth)</div>
 </main>
 </div>
 <div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
 /* ===== ESTADOS (monday) ===== */
@@ -278,16 +279,19 @@ function resetData(){if(confirm("¿Restaurar datos de ejemplo? Se pierden tus ca
 function bootFirebase(){
   try{
     firebase.initializeApp(firebaseConfig);
-    DBREF=firebase.database().ref('gestor_pm/state');
-    setSync("conectando…");
-    DBREF.once('value').then(snap=>{
-      const v=snap.val();
-      if(v){STATE=v;normaliza();}            // la nube manda
-      else{normaliza();FBLISTO=true;DBREF.set(STATE);} // primera vez: sube la semilla
-      FBLISTO=true;
-      setSync("sincronizado");
-      renderSidebar();renderMaestro();
-    }).catch(e=>{FBLISTO=false;normaliza();setSync("sin conexión — guardado local",true);});
+    setSync("autenticando…");
+    firebase.auth().signInAnonymously().then(()=>{
+      DBREF=firebase.database().ref('gestor_pm/state');
+      setSync("conectando…");
+      DBREF.once('value').then(snap=>{
+        const v=snap.val();
+        if(v){STATE=v;normaliza();}            // la nube manda
+        else{normaliza();FBLISTO=true;DBREF.set(STATE);} // primera vez: sube la semilla
+        FBLISTO=true;
+        setSync("sincronizado");
+        renderSidebar();renderMaestro();
+      }).catch(e=>{FBLISTO=false;normaliza();setSync("sin conexión — guardado local",true);});
+    }).catch(e=>{FBLISTO=false;normaliza();setSync("error de acceso — guardado local",true);});
   }catch(e){FBLISTO=false;normaliza();setSync("no disponible — guardado local",true);}
 }
 
