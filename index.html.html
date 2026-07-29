@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestor de Proyectos Especiales · Línea Italia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F7FB; --card:#FFFFFF; --navy:#0F1535; --navy2:#1A2149;
+  --accent:#2563EB; --txt:#1C1F3B; --txt2:#5A6080; --txt3:#9096B0;
+  --line:#E6E9F2; --panel:#F1F3FA;
+  /* estados monday */
+  --s-noini:#C4C4C4; --s-listo:#579BFC; --s-proc:#FDAB3D; --s-rev:#A25DDC; --s-bloq:#E2445C; --s-term:#00C875;
+  --shadow:0 1px 4px rgba(15,21,53,.07); --shadow-lg:0 12px 32px rgba(15,21,53,.16);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;padding-bottom:70px}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+.mono{font-family:'DM Mono',monospace;font-variant-numeric:tabular-nums}
+::-webkit-scrollbar{height:10px;width:10px}::-webkit-scrollbar-thumb{background:#D4D9E8;border-radius:6px}
+
+.app{display:flex;min-height:100vh}
+.side{width:240px;flex-shrink:0;background:#fff;border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.side-brand{display:flex;align-items:center;gap:10px;padding:4px 8px 14px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#2563EB,#60A5FA);display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0}
+.side-brand b{font-size:14px;font-weight:700;display:block;line-height:1.1}
+.side-brand span{color:var(--txt3);font-size:10px;font-family:'DM Mono';text-transform:uppercase;letter-spacing:.1em}
+.side-sec{font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.1em;font-family:'DM Mono';padding:6px 10px 4px}
+.side-ws{font-size:13px;font-weight:700;padding:4px 10px 10px;display:flex;align-items:center;gap:7px}
+.side-ws::before{content:"M";width:20px;height:20px;border-radius:5px;background:linear-gradient(135deg,#7C3AED,#A25DDC);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}
+.side-nav{display:flex;flex-direction:column;gap:2px}
+.side-nav button{text-align:left;font-size:13px;font-weight:500;color:var(--txt2);padding:8px 10px 8px 16px;border-radius:8px;display:flex;align-items:center;gap:8px}
+.side-nav button:hover{background:var(--panel)}
+.side-nav button.on{background:var(--accentSoft,#E9F0FE);color:var(--accent);font-weight:600}
+.side-nav .ico{width:18px;display:inline-flex;align-items:center;justify-content:center;color:var(--txt3)}
+.side-nav button.on .ico{color:var(--accent)}
+.side-nav .proj{padding-left:26px;font-size:12.5px}
+.side-nav .subhead{font-size:9.5px;color:var(--txt3);text-transform:uppercase;letter-spacing:.09em;font-family:'DM Mono';padding:10px 10px 3px}
+.side-imp{text-align:left;font-size:12px;font-weight:600;color:var(--accent);padding:9px 12px;border-radius:8px;border:1px solid var(--line);margin-top:8px}
+.side-imp:hover{background:var(--panel)}
+.main{flex:1;min-width:0;padding:26px 34px 60px;max-width:1680px}
+.famfilt{display:flex;gap:5px}
+.famfilt button{font-size:11px;font-weight:600;color:var(--txt2);padding:4px 11px;border-radius:16px;border:1px solid var(--line);background:var(--card)}
+.famfilt button:hover{border-color:var(--accent);color:var(--accent)}
+.famfilt button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+@media(max-width:820px){.app{flex-direction:column}.side{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;gap:4px}.side-nav{flex-direction:row;flex-wrap:wrap}.main{padding:16px}}
+.view{display:none}.view.on{display:block}
+.eyebrow{font-family:'DM Mono';font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.h1{font-size:25px;font-weight:700;letter-spacing:-.02em}
+.sub{color:var(--txt2);font-size:14px;margin-top:7px;max-width:80ch;line-height:1.5}
+
+/* resumen strip */
+.strip{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:12px 16px;box-shadow:var(--shadow);flex:1;min-width:150px}
+.chip .k{font-size:11px;color:var(--txt3)}.chip .v{font-size:21px;font-weight:700;margin-top:3px}
+
+/* BOARD */
+.board{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
+.board-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.board-head .gc{width:6px;height:22px;border-radius:3px}
+.board-head h3{font-size:15px;font-weight:700}
+.board-head .count{font-size:12px;color:var(--txt3);margin-left:2px}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:left;padding:8px 12px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--txt3);font-weight:600;background:var(--panel);border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:0;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl.fixed{table-layout:fixed}
+.tbl.fixed td{overflow:hidden}
+.tbl.fixed .actv{word-break:break-word;display:block}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover{background:#FBFCFE}
+.cellpad{padding:6px 12px}
+.grpbar{width:11px;padding:0!important;text-align:center;vertical-align:middle}
+.gbar{display:inline-block;width:4px;height:20px;border-radius:4px;vertical-align:middle}
+.actv{font-weight:600;color:var(--txt);font-size:12.5px}
+.fase-lbl{font-size:11px;color:var(--txt3)}
+
+/* persona chip */
+.person{display:inline-flex;align-items:center;gap:7px}
+.ava{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+
+/* estado / prioridad: pastilla compacta con aire alrededor */
+.estado{display:block;margin:5px 10px;height:26px;line-height:26px;border:none;color:#fff;font-weight:600;font-size:11.5px;text-align:center;cursor:pointer;-webkit-appearance:none;appearance:none;text-align-last:center;border-radius:6px;width:calc(100% - 20px);padding:0 6px}
+.estado option{color:#1C1F3B;background:#fff}
+
+/* avance */
+.avance{display:flex;align-items:center;gap:8px;padding:7px 12px}
+.avbar{flex:1;height:8px;background:var(--panel);border-radius:6px;overflow:hidden;min-width:54px}
+.avfill{height:100%;border-radius:6px;background:var(--s-term)}
+.avnum{font-size:11px;color:var(--txt2);font-family:'DM Mono';width:32px;text-align:right}
+
+.datecell input{border:1px solid transparent;background:transparent;font-family:'DM Mono';font-size:11.5px;color:var(--txt2);padding:6px 8px;width:112px;border-radius:6px}
+.datecell input:hover{border-color:var(--line);background:#fff}
+
+.legend{display:flex;gap:9px;flex-wrap:wrap;margin:6px 0 18px}
+.legend .l{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--txt2);background:var(--card);border:1px solid var(--line);border-radius:20px;padding:4px 11px}
+.legend .sw{width:11px;height:11px;border-radius:3px}
+
+.btn{background:var(--accent);color:#fff;font-weight:600;font-size:13px;padding:8px 15px;border-radius:9px}
+.btn:hover{filter:brightness(1.08)}
+.btn-ghost{background:var(--card);color:var(--txt2);border:1px solid var(--line);font-weight:600;font-size:13px;padding:8px 15px;border-radius:9px}
+.addrow{padding:11px 18px;color:var(--txt3);font-size:13px;font-weight:600;cursor:pointer;border-top:1px dashed var(--line)}
+.addrow:hover{color:var(--accent);background:#FBFCFE}
+
+/* master board rows */
+.mrow{cursor:pointer}
+.mname{font-weight:700;font-size:14px;line-height:1.35}.mcli{font-size:11.5px;color:var(--txt3);line-height:1.3;margin-top:1px}
+.delbtn{width:24px;height:24px;border-radius:6px;color:var(--txt3);font-size:12px;opacity:0;transition:.15s}
+.mrow:hover .delbtn{opacity:1}
+.delbtn:hover{background:var(--s-bloq);color:#fff}
+.tbl .mrow td{padding-top:2px;padding-bottom:2px}
+.tbl .airow td{padding-top:5px;padding-bottom:5px}
+.tbl .airow .cellpad{padding-top:12px;padding-bottom:12px}
+
+.back{color:var(--accent);font-size:13px;font-weight:600;margin-bottom:14px;display:inline-flex;gap:5px}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(15,21,53,.5);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-bg.on{display:flex}
+.modal{background:#fff;border-radius:16px;padding:24px;max-width:480px;width:100%;box-shadow:var(--shadow-lg)}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:14px}
+.modal label{display:block;font-size:12px;font-weight:600;color:var(--txt2);margin:10px 0 4px}
+.modal input,.modal select{width:100%;font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+.modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.foot{text-align:center;color:var(--txt3);font-size:11px;margin-top:26px;font-family:'DM Mono'}
+.ptabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin:16px 0 18px}
+.ptabs button{font-size:13px;font-weight:600;color:var(--txt2);padding:9px 14px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.ptabs button:hover{color:var(--txt)}
+.ptabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.kanban{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.kcol{background:var(--panel);border-radius:11px;padding:10px;min-height:90px}
+.kcol h4{font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-family:'DM Mono';margin-bottom:9px;font-weight:700}
+.kcard{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:9px 10px;margin-bottom:8px;box-shadow:var(--shadow)}
+.kcard .kt{font-size:12px;font-weight:600;line-height:1.3;margin-bottom:6px}
+.kcard .km{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.kcard .kmove{width:100%;font-size:10px;padding:3px 5px;margin-top:7px;border:1px solid var(--line);border-radius:6px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cal-head div{text-align:center;font-size:10.5px;color:var(--txt3);font-weight:700;font-family:'DM Mono';padding-bottom:4px}
+.cal-cell{min-height:88px;background:var(--panel);border-radius:8px;padding:6px 7px}
+.cal-cell.empty{background:transparent}
+.cal-cell.hoy{outline:2px solid var(--accent)}
+.cal-d{font-size:11px;color:var(--txt3);font-weight:600;margin-bottom:3px}
+.cal-ev{font-size:10.5px;line-height:1.3;padding:3px 5px;border-radius:4px;margin-bottom:3px;overflow:hidden}
+.dashgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.dashgrid .board{margin-bottom:0}
+@media(max-width:800px){.kanban{grid-template-columns:1fr 1fr}.dashgrid{grid-template-columns:1fr}}
+@media(max-width:800px){.tbl{font-size:12.5px}.wrap{padding:16px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+  <div class="side-brand"><div class="logo">LI</div><div><b>Gestor PM</b><span>Línea Italia</span></div></div>
+  <div class="side-sec">Workspace</div>
+  <div class="side-ws">Muebles Corporativos</div>
+  <nav class="side-nav" id="sideNav"></nav>
+  <div style="flex:1"></div>
+  <button class="side-imp" onclick="modalImportar()">⇅ Importar / Exportar</button>
+  <button class="side-imp" style="color:var(--txt3)" onclick="resetData()">↺ Restaurar ejemplo</button>
+</aside>
+<main class="main">
+  <div class="view on" id="v-maestro"></div>
+  <div class="view" id="v-dashboard"></div>
+  <div class="view" id="v-riesgos"></div>
+  <div class="view" id="v-bitacora"></div>
+  <div class="view" id="v-solicitudes"></div>
+  <div class="view" id="v-proyecto"></div>
+  <div class="foot">Gestor de Proyectos Especiales · Línea Italia · <span id="syncf" style="font-weight:600">Firebase: iniciando…</span> · v25</div>
+</main>
+</div>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
+/* ===== ESTADOS (monday) ===== */
+const ESTADOS=["No iniciado","Listo para comenzar","En proceso","En revisión","Bloqueado","Terminado"];
+const COLOR={"No iniciado":"#C4C4C4","Listo para comenzar":"#579BFC","En proceso":"#FDAB3D","En revisión":"#A25DDC","Bloqueado":"#E2445C","Terminado":"#00C875"};
+const AVANCE_DEF={"No iniciado":0,"Listo para comenzar":0,"En proceso":50,"En revisión":85,"Bloqueado":30,"Terminado":100};
+const GRUPO_COLOR={"Planeación":"#579BFC","Diseño":"#A25DDC","Cliente":"#00A896","Compras":"#FDAB3D","Producción":"#2563EB","Calidad":"#E2445C","Logística":"#00C875","Instalación":"#F9A03F","Cierre":"#0F1535"};
+const FASE_ORDEN=["Planeación","Diseño","Cliente","Compras","Producción","Calidad","Logística","Instalación","Cierre"];
+const PERSON_COLOR={"Project Manager":"#2563EB","René Esparza":"#2563EB","Ingeniería":"#A25DDC","Comercial":"#00C875","Compras":"#FDAB3D","Producción":"#579BFC","Calidad":"#E2445C","Logística":"#00A896","Taller":"#7C3AED","Instalaciones":"#FDAB3D","Cliente":"#5A6080","PCP":"#E2445C"};
+
+/* ===== SEMILLA (datos reales Seguros Monterrey + TIMKEN + Hyatt) ===== */
+const PRIORIDAD={"Alta":"#A25DDC","Media":"#FDAB3D","Baja":"#579BFC"};
+function act(fase,actividad,resp,inicio,entrega,estado,prioridad){return {id:"a"+Math.random().toString(36).slice(2,8),fase,actividad,resp,inicio,entrega,estado,avance:AVANCE_DEF[estado],prioridad:prioridad||"Media",coms:0};}
+const SEED={proyectos:[
+ {id:"segmty",nombre:"Seguros Monterrey",cliente:"MetLife · Programa multi-sucursal (10 áreas)",valor:15179310,inauguracion:"2026-08-31",
+  riesgos:[
+   {id:"r_s1",desc:"Retraso en entrega de rodajas (importación)",proyecto:"Seguros Monterrey",prob:4,imp:5,resp:"Compras",estatus:"abierto"},
+   {id:"r_s2",desc:"Cambio de medidas / acabados por el cliente",proyecto:"Seguros Monterrey",prob:3,imp:3,resp:"Comercial",estatus:"abierto"},
+   {id:"r_s3",desc:"Restricción de acceso al piso para instalar",proyecto:"Seguros Monterrey",prob:3,imp:3,resp:"PM / Cliente",estatus:"abierto"},
+   {id:"r_s4",desc:"Partidas sin precio traban facturación",proyecto:"Seguros Monterrey",prob:4,imp:2,resp:"Comercial",estatus:"abierto"}
+  ],
+  actividades:[
+   act("Planeación","Confirmar alcance y OC (10 pedidos capturados)","Comercial","2026-07-01","2026-07-05","Terminado"),
+   act("Planeación","Validar alcance vs explosivo de materiales","Ingeniería","2026-07-24","2026-07-28","En proceso"),
+   act("Diseño","Liberar folios especiales (perf. BTS-SS202)","Ingeniería","2026-07-20","2026-07-27","Terminado"),
+   act("Diseño","Re-cortar 34 cubiertas FC-6379 (grommet recorrido)","Taller","2026-07-29","2026-07-31","En proceso"),
+   act("Cliente","Confirmar anticipos y acabados por sucursal","Comercial","2026-07-24","2026-08-02","En proceso"),
+   act("Compras","Rodaja 75mm importación (380 pza) — ETA 17-18 ago","Compras","2026-07-15","2026-08-18","Bloqueado"),
+   act("Compras","Tela especial 408 m — arribo 29-jul","Compras","2026-07-20","2026-07-29","En proceso"),
+   act("Compras","Asignar precios pendientes ($0): Ciao, electrificación","Comercial","2026-07-28","2026-07-31","Bloqueado"),
+   act("Producción","Fabricar escritorios FA-6379 (70/70 programados)","Producción","2026-07-30","2026-08-17","En proceso"),
+   act("Producción","Fabricar mesas abatibles (95) — sub-lote post-rodaja","PCP","2026-08-19","2026-08-26","No iniciado"),
+   act("Calidad","Inspección de producto terminado","Calidad","2026-08-24","2026-08-27","No iniciado"),
+   act("Logística","Programar embarque a las 4 ciudades","Logística","2026-08-17","2026-08-19","No iniciado"),
+   act("Instalación","Armado e instalación en sitio","Taller","2026-08-21","2026-08-30","No iniciado"),
+   act("Cierre","Entrega, sign-off del cliente y garantías","Project Manager","2026-08-31","2026-09-10","No iniciado")
+  ]},
+ {id:"timken",nombre:"TIMKEN",cliente:"TIMKEN · Planta / oficinas",valor:0,inauguracion:"2026-08-01",
+  actividades:[
+   act("Producción","Fabricación de mobiliario","Producción","2026-05-05","2026-07-16","Terminado"),
+   act("Logística","Embarque a sitio","Logística","2026-07-16","2026-07-18","Terminado"),
+   act("Instalación","Armado e instalación","Taller","2026-07-20","2026-07-28","En proceso"),
+   act("Calidad","Levantar faltantes de armado","Taller","2026-07-28","2026-07-29","En revisión"),
+   act("Cierre","Sign-off del cliente","Project Manager","2026-07-30","2026-08-01","No iniciado")
+  ]},
+ {id:"hyatt",nombre:"Hyatt",cliente:"Hyatt · Hotelería corporativa",valor:0,inauguracion:"2027-02-15",
+  riesgos:[{id:"r_h1",desc:"Concurso aún no ganado — alcance sin cerrar",proyecto:"Hyatt",prob:3,imp:4,resp:"René / Comercial",estatus:"abierto"}],
+  actividades:[
+   act("Planeación","Decisión go/no-go del concurso","Project Manager","2026-07-28","2026-08-01","En proceso"),
+   act("Diseño","Propuesta y cotización","Comercial","2026-08-01","2026-09-15","No iniciado")
+  ]}
+],
+hallazgos:[
+  {id:"h1",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Rodajas subestimadas 6×",detalle:"CRM registró 64 pza; el explosivo pide 380 (190/190) para 95 mesas.",fam:"A",resp:"Costos / CRM",recurrente:true,impacto:"alto",estatus:"corregido"},
+  {id:"h2",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Tela especial subestimada 3.5×",detalle:"Planeado 117 m; explosivo real 408 m.",fam:"A",resp:"Costos / CRM",recurrente:true,impacto:"alto",estatus:"en curso"},
+  {id:"h3",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Mesa de 150 cm omitida en cotización",detalle:"Partida no incluida; detectada en ejecución.",fam:"A",resp:"Comercial (Tania)",recurrente:true,impacto:"medio",estatus:"en curso"},
+  {id:"h4",fecha:"2026-07-24",proyecto:"Seguros Monterrey",titulo:"Cotizaciones vencidas al 31-jul",detalle:"Torreón PB/PA y Villahermosa con vigencia cumplida.",fam:"A",resp:"Comercial",recurrente:true,impacto:"medio",estatus:"resuelto"},
+  {id:"h5",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"ETA de rodaja de importación sin registrar",detalle:"Compra a DZT, arribo 17-18 ago — vive en chat, no en sistema.",fam:"B",resp:"Compras",recurrente:true,impacto:"alto",estatus:"abierto"},
+  {id:"h6",fecha:"2026-07-27",proyecto:"Seguros Monterrey",titulo:"PCP programó mesas sin la rodaja",detalle:"Fabricación 14-18 ago; rodaja llega 17-18 ago. Ventana no cierra.",fam:"B",resp:"PCP / Compras",recurrente:true,impacto:"alto",estatus:"abierto"},
+  {id:"h7",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Clave de material errónea (70 vs 75 mm)",detalle:"Rodaja registrada 70 mm; real 75 mm.",fam:"C",resp:"Ingeniería / Costos",recurrente:true,impacto:"medio",estatus:"por corregir"},
+  {id:"h8",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Fecha ancla errónea (45 días)",detalle:"Inauguración registrada 15-oct; real 31-ago.",fam:"C",resp:"PM / Comercial",recurrente:false,impacto:"alto",estatus:"corregido"},
+  {id:"h9",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Retrabajo FC-6379: grommet al borde",detalle:"34 cubiertas cortadas con grommet al borde (tapa se salía); se reaprovechan como puentes FC-6199 y se re-cortan 34 nuevas.",fam:"D",resp:"Ingeniería / Innovación",recurrente:false,impacto:"medio",estatus:"en curso"},
+  {id:"h10",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Torreón PA: cotización mal capturada",detalle:"Clave BTS-303→BTS-SS202, folio 5441→FC-6397, monto $3.04M→$4.26M.",fam:"A",resp:"Comercial / Costos",recurrente:true,impacto:"alto",estatus:"en curso"},
+  {id:"h11",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Subestimación sistémica del valor",detalle:"Todas las sucursales bajo la cotización vieja; programa real ~$15.18M vs $11.1M.",fam:"A",resp:"Comercial / Costos",recurrente:true,impacto:"alto",estatus:"en curso"},
+  {id:"h12",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Partidas sin precio ($0) en pedidos",detalle:"7 de 10 pedidos con Ciao/electrificación en $0; traba facturación.",fam:"A",resp:"Comercial",recurrente:true,impacto:"medio",estatus:"abierto"}
+]};
+const FAMILIAS={
+  A:{nombre:"Datos de origen ≠ realidad",color:"#E2445C",contra:"Checklist de validación en el intake: cruzar cotización + CRM contra el explosivo y el conteo por área antes de aceptar la OC.",dueno:"Costos y Folios + Comercial"},
+  B:{nombre:"Fechas sin sincronizar (Compras↔PCP)",color:"#FDAB3D",contra:"La ETA de todo componente de importación entra al plan de PCP al colocar la PO; no se programa fabricación sin ETA confirmada.",dueno:"Compras + PCP"},
+  C:{nombre:"Datos maestros / claves erróneas",color:"#579BFC",contra:"Validar clave de material contra ficha técnica y fecha ancla contra confirmación del cliente antes de liberar.",dueno:"Ingeniería + PM"},
+  D:{nombre:"Cambio de diseño / retrabajo",color:"#A25DDC",contra:"Validar el punto crítico funcional (prototipo/checklist de liberación) antes de liberar a corte.",dueno:"Ingeniería / Innovación"}
+};
+
+/* ===== ESTADO + FIREBASE ===== */
+const KEY="gpe_monday_v10";
+const firebaseConfig={
+  apiKey:"AIzaSyDdC0YSMXmsw1NbwWHtWcpOrPvA-rYYYd8",
+  authDomain:"pm-li-df619.firebaseapp.com",
+  databaseURL:"https://pm-li-df619-default-rtdb.firebaseio.com",
+  projectId:"pm-li-df619",
+  storageBucket:"pm-li-df619.firebasestorage.app",
+  messagingSenderId:"533633758350",
+  appId:"1:533633758350:web:f458ed680dae8dc791c5df"
+};
+let DBREF=null, FBLISTO=false;
+let STATE=localLoad(); let CUR=null; let SUB="tabla"; let BFILTRO="todas";
+function localLoad(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s);}catch(e){}return JSON.parse(JSON.stringify(SEED));}
+function normaliza(){
+  if(!STATE.proyectos)STATE.proyectos=[];
+  STATE.proyectos.forEach(p=>{p.actividades=p.actividades||[];p.riesgos=p.riesgos||[];});
+  if(!STATE.hallazgos)STATE.hallazgos=[];
+  if(!STATE.solicitudes)STATE.solicitudes=[];
+  if(!STATE.contramedidas){STATE.contramedidas={};Object.entries(FAMILIAS).forEach(([k,f])=>STATE.contramedidas[k]={contra:f.contra,dueno:f.dueno});}
+}
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(STATE));}catch(e){}
+  if(DBREF&&FBLISTO){DBREF.set(STATE).then(()=>setSync("guardado en la nube")).catch(()=>setSync("sin conexión — guardado local",true));}
+}
+function setSync(txt,warn){const el=document.getElementById("syncf");if(el){el.textContent="Firebase: "+txt;el.style.color=warn?"var(--s-bloq)":"var(--s-term)";}}
+function resetData(){if(confirm("¿Restaurar datos de ejemplo? Se pierden tus cambios (también en la nube)."))
+{STATE=JSON.parse(JSON.stringify(SEED));normaliza();save();setV('maestro');}}
+function bootFirebase(){
+  try{
+    firebase.initializeApp(firebaseConfig);
+    DBREF=firebase.database().ref('gestor_pm/state');
+    setSync("conectando…");
+    DBREF.once('value').then(snap=>{
+      const v=snap.val();
+      if(v){STATE=v;normaliza();}            // la nube manda
+      else{normaliza();FBLISTO=true;DBREF.set(STATE);} // primera vez: sube la semilla
+      FBLISTO=true;
+      setSync("sincronizado");
+      renderSidebar();renderMaestro();
+    }).catch(e=>{FBLISTO=false;normaliza();setSync("sin conexión — guardado local",true);});
+  }catch(e){FBLISTO=false;normaliza();setSync("no disponible — guardado local",true);}
+}
+
+/* ===== HELPERS ===== */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const money0=n=>"$"+Number(n||0).toLocaleString("es-MX",{maximumFractionDigits:0});
+function diasA(f){if(!f)return null;return Math.ceil((new Date(f+"T00:00:00")-new Date(new Date().toDateString()))/86400000);}
+function ava(nombre){const ini=(nombre||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();const col=PERSON_COLOR[nombre]||"#8A90B0";return `<span class="ava" style="background:${col}">${ini}</span>`;}
+function proy(id){return STATE.proyectos.find(p=>p.id===id);}
+function avanceProy(p){if(!p.actividades.length)return 0;return Math.round(p.actividades.reduce((a,x)=>a+(x.avance||0),0)/p.actividades.length);}
+function bloqueados(p){return p.actividades.filter(a=>a.estado==="Bloqueado").length;}
+function faseActual(p){const enc=p.actividades.find(a=>a.estado!=="Terminado");return enc?enc.fase:"Cierre";}
+function estadoProy(p){if(bloqueados(p))return "Bloqueado";const av=avanceProy(p);if(av>=100)return "Terminado";if(av>0)return "En proceso";return "Listo para comenzar";}
+
+/* ===== AUTOMATIZACIONES (reglas del spec, hechas visibles como alertas) ===== */
+function actsOrdenadas(p){return [...p.actividades].sort((a,b)=>{
+  const fa=FASE_ORDEN.indexOf(a.fase),fb=FASE_ORDEN.indexOf(b.fase);
+  if(fa!==fb)return fa-fb; return new Date(a.entrega||"2999")-new Date(b.entrega||"2999");});}
+function alertasProy(p){
+  const al=[];
+  // Regla 1: vencida y no terminada -> avisar responsable
+  p.actividades.forEach(a=>{const d=diasA(a.entrega);if(a.estado!=="Terminado"&&d!=null&&d<0)
+    al.push({icon:"🔴",color:"var(--s-bloq)",txt:`<b>${esc(a.actividad)}</b> venció hace ${-d}d y no está terminada → avisar a <b>${esc(a.resp)}</b>`});});
+  // Regla 2: bloqueado -> avisar PM
+  p.actividades.forEach(a=>{if(a.estado==="Bloqueado")
+    al.push({icon:"🚫",color:"var(--s-bloq)",txt:`<b>${esc(a.actividad)}</b> está bloqueada → avisar al Project Manager`});});
+  // Regla 3: terminada cuya siguiente no ha iniciado -> avisar al siguiente
+  const ord=actsOrdenadas(p);
+  for(let i=0;i<ord.length-1;i++){if(ord[i].estado==="Terminado"&&ord[i+1].estado==="No iniciado")
+    al.push({icon:"➡️",color:"var(--s-listo)",txt:`Lista <b>${esc(ord[i].actividad)}</b> → arranca la siguiente: <b>${esc(ord[i+1].actividad)}</b> (${esc(ord[i+1].resp)})`});break;}
+  // Regla 4: todo terminado -> cerrar
+  if(p.actividades.length&&p.actividades.every(a=>a.estado==="Terminado"))
+    al.push({icon:"✅",color:"var(--s-term)",txt:`Todas las actividades terminadas → <b>cerrar el proyecto</b>`});
+  return al;
+}
+function renderAlertasCard(alertas,titulo){
+  if(!alertas.length)return `<div class="board"><div class="board-head"><span class="gc" style="background:var(--s-term)"></span><h3>⚡ ${titulo}</h3></div><div style="padding:16px 18px;color:var(--txt3);font-size:13px">Sin alertas. Todo en orden.</div></div>`;
+  const rows=alertas.map(a=>`<div style="display:flex;gap:11px;align-items:flex-start;padding:11px 18px;border-bottom:1px solid var(--line)"><span style="font-size:16px">${a.icon}</span><span style="font-size:13px;color:var(--txt2);line-height:1.4">${a.txt}</span></div>`).join("");
+  return `<div class="board" style="border-left:4px solid var(--s-bloq)"><div class="board-head"><span class="gc" style="background:var(--s-bloq)"></span><h3>⚡ ${titulo}</h3><span class="count">${alertas.length}</span></div>${rows}</div>`;
+}
+
+/* ===== DASHBOARD / SEGUIMIENTO SEMANAL ===== */
+function plannedPct(a){
+  if(a.estado==="Terminado")return 100;
+  if(!a.inicio||!a.entrega)return 0;
+  const t0=new Date(a.inicio),t1=new Date(a.entrega),now=new Date(new Date().toDateString());
+  if(now>=t1)return 100; if(now<=t0)return 0;
+  return Math.round((now-t0)/(t1-t0)*100);
+}
+function planReal(p){
+  if(!p.actividades.length)return {plan:0,real:0};
+  const plan=Math.round(p.actividades.reduce((a,x)=>a+plannedPct(x),0)/p.actividades.length);
+  const real=avanceProy(p);
+  return {plan,real};
+}
+function vencidas(p){return p.actividades.filter(a=>{const d=diasA(a.entrega);return a.estado!=="Terminado"&&d!=null&&d<0;});}
+function proxHitos(p,n){return actsOrdenadas(p).filter(a=>a.estado!=="Terminado").slice(0,n);}
+
+function renderDashboard(){
+  const ps=STATE.proyectos;
+  const cards=ps.map(p=>{
+    const {plan,real}=planReal(p);
+    const vari=real-plan;
+    const vc=vencidas(p),bl=bloqueados(p),prox=proxHitos(p,3);
+    const variTxt = vari>=0?`<span style="color:var(--s-term)">+${vari}% adelantado</span>`:`<span style="color:var(--s-bloq)">${vari}% atrasado</span>`;
+    return `<div class="board">
+      <div class="board-head"><span class="gc" style="background:${COLOR[estadoProy(p)]}"></span><h3>${esc(p.nombre)}</h3><span class="count">${esc(p.cliente)}</span></div>
+      <div style="padding:16px 18px">
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px">
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:11px;color:var(--txt3);margin-bottom:6px">AVANCE PLANIFICADO VS REAL &nbsp; ${variTxt}</div>
+            <div style="position:relative;height:26px;background:var(--panel);border-radius:7px;overflow:hidden">
+              <div style="position:absolute;top:0;left:0;height:100%;width:${plan}%;background:#D4DCF0"></div>
+              <div style="position:absolute;top:0;left:0;height:100%;width:${real}%;background:${vari<0?'var(--s-bloq)':'var(--s-term)'};opacity:.85"></div>
+              <div style="position:absolute;top:0;left:${plan}%;height:100%;width:2px;background:var(--navy)"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--txt3);margin-top:5px"><span>Real: <b style="color:var(--txt)">${real}%</b></span><span>Plan: <b style="color:var(--txt)">${plan}%</b></span></div>
+          </div>
+          <div style="display:flex;gap:14px">
+            <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:${vc.length?'var(--s-bloq)':'var(--txt3)'}">${vc.length}</div><div style="font-size:10px;color:var(--txt3)">VENCIDAS</div></div>
+            <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:${bl?'var(--s-bloq)':'var(--txt3)'}">${bl}</div><div style="font-size:10px;color:var(--txt3)">BLOQUEADAS</div></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--txt3);margin-bottom:6px">PRÓXIMOS HITOS</div>
+        ${prox.length?prox.map(a=>{const d=diasA(a.entrega);return `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-bottom:1px solid var(--line)"><span>${esc(a.actividad)} <span style="color:var(--txt3)">· ${esc(a.resp)}</span></span><span class="mono" style="color:${d!=null&&d<0?'var(--s-bloq)':'var(--txt2)'}">${a.entrega||"—"}${d!=null?` (${d<0?'venc.':d+'d'})`:''}</span></div>`}).join(""):'<div style="font-size:12px;color:var(--txt3)">Sin hitos pendientes.</div>'}
+      </div></div>`;
+  }).join("");
+  const totVenc=ps.reduce((a,p)=>a+vencidas(p).length,0);
+  const totBloq=ps.reduce((a,p)=>a+bloqueados(p),0);
+  $("#v-dashboard").innerHTML=`
+    <div class="eyebrow">Seguimiento · reunión semanal de 30 min</div>
+    <div class="h1">Dashboard ejecutivo</div>
+    <p class="sub">Para tu revisión semanal y para informar a dirección: avance planificado contra real, actividades vencidas y próximos hitos de cada proyecto. La línea negra marca dónde <i>deberías</i> ir; la barra de color, dónde <i>vas</i>.</p>
+    <div class="strip">
+      <div class="chip"><div class="k">Proyectos</div><div class="v">${ps.length}</div></div>
+      <div class="chip"><div class="k">Vencidas (total)</div><div class="v" style="color:${totVenc?'var(--s-bloq)':'inherit'}">${totVenc}</div></div>
+      <div class="chip"><div class="k">Bloqueadas (total)</div><div class="v" style="color:${totBloq?'var(--s-bloq)':'inherit'}">${totBloq}</div></div>
+      <div class="chip"><div class="k">Valor portafolio</div><div class="v" style="font-size:16px">${money0(ps.reduce((a,p)=>a+(p.valor||0),0))}</div></div>
+    </div>
+    ${cards}
+    ${(()=>{const rs=allRiesgos().filter(r=>r.estatus!=="cerrado").sort((a,b)=>nivelRiesgo(b)-nivelRiesgo(a)).slice(0,6);
+      if(!rs.length)return "";
+      return `<div class="board"><div class="board-head"><span class="gc" style="background:#E2445C"></span><h3>Riesgos principales</h3><span class="count">top ${rs.length}</span></div><div style="padding:12px 18px">${rs.map(r=>{const n=nivelRiesgo(r);return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)"><span>${esc(r.desc)} <span style="color:var(--txt3)">· ${esc(r.proyecto)}</span></span><span class="pill" style="background:${nivelColor(n)};color:#fff">${nivelTxt(n)}</span></div>`}).join("")}</div></div>`;})()}`;
+}
+let VACT="maestro";
+function setV(v){document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));$("#v-"+v).classList.add("on");
+  VACT=v; renderSidebar();
+  if(v==="maestro")renderMaestro(); if(v==="dashboard")renderDashboard(); if(v==="riesgos")renderRiesgos();
+  if(v==="bitacora")renderBitacora(); if(v==="solicitudes")renderSolicitudes(); if(v==="proyecto")renderProyecto();
+  window.scrollTo(0,0);}
+function abrir(id){CUR=id;SUB="tabla";setV("proyecto");}
+function renderSidebar(){
+  const ic={
+    home:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>',
+    grid:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+    folder:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+    inbox:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 13l2-8h12l2 8"/><path d="M4 13v6h16v-6"/><path d="M4 13h5l1 2h4l1-2h5"/></svg>'
+  };
+  const projs=STATE.proyectos.map(p=>`<button class="proj ${VACT==='proyecto'&&CUR===p.id?'on':''}" onclick="abrir('${p.id}')"><span class="ico">${ic.folder}</span>${esc(p.nombre)}</button>`).join("");
+  $("#sideNav").innerHTML=`
+    <button class="${VACT==='maestro'?'on':''}" onclick="setV('maestro')"><span class="ico">${ic.home}</span>Portafolio</button>
+    <button class="${VACT==='dashboard'?'on':''}" onclick="setV('dashboard')"><span class="ico">${ic.grid}</span>Dashboard</button>
+    <div class="subhead">Proyectos</div>
+    ${projs}
+    <div class="subhead">General</div>
+    <button class="${VACT==='solicitudes'?'on':''}" onclick="setV('solicitudes')"><span class="ico">${ic.inbox}</span>Solicitudes</button>`;
+}
+
+/* ===== LEYENDA ===== */
+function leyenda(){return `<div class="legend">${ESTADOS.map(e=>`<span class="l"><span class="sw" style="background:${COLOR[e]}"></span>${e}</span>`).join("")}</div>`;}
+
+/* ===== TABLERO MAESTRO ===== */
+function renderMaestro(){
+  const ps=STATE.proyectos;
+  const valorTot=ps.reduce((a,p)=>a+(p.valor||0),0);
+  const bloqTot=ps.reduce((a,p)=>a+bloqueados(p),0);
+  const prox=ps.filter(p=>p.inauguracion).sort((a,b)=>new Date(a.inauguracion)-new Date(b.inauguracion))[0];
+  const rows=ps.map(p=>{
+    const est=estadoProy(p),av=avanceProy(p),d=diasA(p.inauguracion);
+    return `<tr class="mrow" onclick="abrir('${p.id}')">
+      <td class="grpbar"><span class="gbar" style="background:${COLOR[est]}"></span></td>
+      <td class="cellpad" style="padding:12px"><div class="mname">${esc(p.nombre)}</div><div class="mcli">${esc(p.cliente)}</div></td>
+      <td class="cellpad"><span class="fase-lbl">${esc(faseActual(p))}</span></td>
+      <td><span class="estado" style="background:${COLOR[est]};display:inline-block;width:auto;min-width:118px;margin:9px 10px">${est}</span></td>
+      <td><div class="avance"><div class="avbar"><div class="avfill" style="width:${av}%;background:${COLOR[est]}"></div></div><span class="avnum">${av}%</span></div></td>
+      <td class="cellpad mono">${p.valor?money0(p.valor):"—"}</td>
+      <td class="cellpad mono">${p.inauguracion||"—"}${d!=null?` <span style="color:${d<0?'var(--s-bloq)':'var(--txt3)'}">(${d<0?'vencido':d+'d'})</span>`:""}</td>
+      <td class="cellpad" style="text-align:center">${bloqueados(p)?`<span style="color:var(--s-bloq);font-weight:700">${bloqueados(p)}</span>`:'<span style="color:var(--txt3)">0</span>'}</td>
+      <td style="text-align:center"><button class="delbtn" title="Eliminar proyecto" onclick="event.stopPropagation();eliminarProyecto('${p.id}')">✕</button></td>
+    </tr>`;
+  }).join("");
+  $("#v-maestro").innerHTML=`
+   <div class="eyebrow">Vista de portafolio</div>
+   <div class="h1">Tablero maestro</div>
+   <p class="sub">Todos tus proyectos especiales en una pantalla. El color = estado. Da clic en un proyecto para ver y controlar sus actividades diarias.</p>
+   <div class="strip">
+     <div class="chip"><div class="k">Proyectos activos</div><div class="v">${ps.length}</div></div>
+     <div class="chip"><div class="k">Valor del portafolio</div><div class="v" style="font-size:18px">${money0(valorTot)}</div></div>
+     <div class="chip"><div class="k">Actividades bloqueadas</div><div class="v" style="color:var(--s-bloq)">${bloqTot}</div></div>
+     <div class="chip"><div class="k">Próxima entrega</div><div class="v" style="font-size:14px">${prox?esc(prox.nombre)+" · "+prox.inauguracion:"—"}</div></div>
+   </div>
+   ${(()=>{const all=[];ps.forEach(p=>alertasProy(p).forEach(a=>all.push({...a,txt:`<span class="mono" style="color:var(--txt3)">[${esc(p.nombre)}]</span> `+a.txt})));return renderAlertasCard(all,"Alertas y automatizaciones");})()}
+   ${leyenda()}
+   <div class="board">
+     <div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Proyectos</h3><span class="count">${ps.length} filas</span></div>
+     <table class="tbl"><thead><tr><th style="width:11px"></th><th>Proyecto</th><th>Fase actual</th><th style="text-align:center">Estado</th><th>Avance</th><th>Valor</th><th>Entrega</th><th style="text-align:center">Bloq.</th><th style="width:36px"></th></tr></thead>
+     <tbody>${rows}</tbody></table>
+     <div class="addrow" onclick="modalNuevoProyecto()">+ Agregar proyecto</div>
+   </div>`;
+}
+
+/* ===== TABLERO DE PROYECTO ===== */
+function renderProyecto(){
+  const p=proy(CUR);if(!p)return;
+  const av=avanceProy(p),d=diasA(p.inauguracion);
+  const tabs=[["tabla","Tabla principal"],["gantt","Gantt"],["kanban","Kanban"],["calendario","Calendario"],["riesgos","Riesgos"],["bitacora","Bitácora"],["dashboard","Dashboard"]];
+  let body="";
+  if(SUB==="tabla")body=subTabla(p);
+  else if(SUB==="gantt")body=subGantt(p);
+  else if(SUB==="kanban")body=subKanban(p);
+  else if(SUB==="calendario")body=subCalendario(p);
+  else if(SUB==="riesgos")body=subRiesgos(p);
+  else if(SUB==="bitacora")body=subBitacora(p);
+  else if(SUB==="dashboard")body=subDashboard(p);
+  $("#v-proyecto").innerHTML=`
+   <button class="back" onclick="setV('maestro')">← Tablero maestro</button>
+   <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+     <div><div class="eyebrow">Proyecto</div><div class="h1">${esc(p.nombre)}</div><p class="sub">${esc(p.cliente)}</p></div>
+   </div>
+   <div class="strip">
+     <div class="chip"><div class="k">Avance global</div><div class="v">${av}%</div></div>
+     <div class="chip"><div class="k">Valor c/IVA</div><div class="v" style="font-size:17px">${p.valor?money0(p.valor):"—"}</div></div>
+     <div class="chip"><div class="k">Entrega</div><div class="v" style="font-size:15px">${p.inauguracion||"—"}${d!=null?` · ${d<0?'vencido':d+'d'}`:""}</div></div>
+     <div class="chip"><div class="k">Bloqueadas</div><div class="v" style="color:var(--s-bloq)">${bloqueados(p)}</div></div>
+   </div>
+   <div class="ptabs">${tabs.map(([k,l])=>`<button class="${k===SUB?'on':''}" onclick="setSub('${k}')">${l}</button>`).join("")}</div>
+   ${body}`;
+}
+function setSub(s){SUB=s;renderProyecto();window.scrollTo(0,0);}
+
+/* --- SUB: TABLA PRINCIPAL --- */
+function subTabla(p){
+  const grupos=[];const seen={};
+  p.actividades.forEach(a=>{if(!seen[a.fase]){seen[a.fase]=[];grupos.push(a.fase);}seen[a.fase].push(a);});
+  grupos.sort((x,y)=>{const ix=FASE_ORDEN.indexOf(x),iy=FASE_ORDEN.indexOf(y);return (ix<0?99:ix)-(iy<0?99:iy);});
+  const ord=actsOrdenadas(p);
+  ord.forEach((a,i)=>a._num=i+1);
+  const depDe=a=>{const i=ord.findIndex(x=>x.id===a.id);return i>0?ord[i-1].actividad:"—";};
+  let n=0;
+  const boards=grupos.map(g=>{
+    n++;const col=GRUPO_COLOR[g]||"#8A90B0";
+    const rows=seen[g].map(a=>{
+      const dd=diasA(a.entrega),atras=a.estado!=="Terminado"&&dd!=null&&dd<0;
+      return `<tr>
+        <td class="grpbar"><span class="gbar" style="background:${col}"></span></td>
+        <td style="width:24px;text-align:center;color:var(--txt3);font-family:'DM Mono';font-size:11px">${(a._num||'')}</td>
+        <td class="cellpad"><span class="actv">${esc(a.actividad)}</span></td>
+        <td class="cellpad"><span class="person">${ava(a.resp)}<span>${esc(a.resp)}</span></span></td>
+        <td class="datecell"><input type="date" value="${a.inicio||''}" onchange="updAct('${a.id}','inicio',this.value)"></td>
+        <td class="datecell"><input type="date" value="${a.entrega||''}" onchange="updAct('${a.id}','entrega',this.value)">${atras?'<div style="font-size:9px;color:var(--s-bloq);padding-left:10px;font-weight:700">ATRASADA</div>':''}</td>
+        <td><select class="estado" style="background:${COLOR[a.estado]}" onchange="updEstado('${a.id}',this.value)">${ESTADOS.map(e=>`<option ${e===a.estado?'selected':''}>${e}</option>`).join("")}</select></td>
+        <td style="width:130px"><div class="avance"><div class="avbar"><div class="avfill" style="width:${a.avance}%;background:${COLOR[a.estado]}"></div></div><span class="avnum">${a.avance}%</span></div></td>
+        <td><select class="estado" style="background:${PRIORIDAD[a.prioridad]}" onchange="updAct('${a.id}','prioridad',this.value)">${Object.keys(PRIORIDAD).map(x=>`<option ${x===a.prioridad?'selected':''}>${x}</option>`).join("")}</select></td>
+        <td class="cellpad" style="font-size:12px;color:var(--txt3)">${esc(depDe(a))}</td>
+      </tr>`;
+    }).join("");
+    return `<div class="board">
+      <div class="board-head"><span class="gc" style="background:${col}"></span><h3>${n}. ${esc(g)}</h3><span class="count">${seen[g].length}</span></div>
+      <table class="tbl fixed"><colgroup><col style="width:11px"><col style="width:34px"><col><col style="width:150px"><col style="width:118px"><col style="width:118px"><col style="width:148px"><col style="width:128px"><col style="width:108px"><col style="width:210px"></colgroup><thead><tr><th style="width:11px"></th><th>#</th><th>Actividad</th><th>Responsable</th><th>Inicio</th><th>Entrega</th><th style="text-align:center">Estado</th><th>Avance</th><th style="text-align:center">Prioridad</th><th>Dependencia</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <div class="addrow" onclick="modalNuevaActividad('${g}')">+ Agregar actividad a ${esc(g)}</div>
+    </div>`;
+  }).join("");
+  return renderAlertasCard(alertasProy(p),"Alertas y automatizaciones")+leyenda()+boards;
+}
+
+/* --- SUB: GANTT --- */
+function subGantt(p){
+  const acts=actsOrdenadas(p).filter(a=>a.inicio&&a.entrega);
+  if(!acts.length)return `<div class="board"><div style="padding:20px;color:var(--txt3)">Agrega fechas de inicio y entrega a las actividades para ver el Gantt.</div></div>`;
+  const min=new Date(Math.min(...acts.map(a=>+new Date(a.inicio))));
+  const max=new Date(Math.max(...acts.map(a=>+new Date(a.entrega))));
+  const span=Math.max(1,(max-min)/86400000);
+  const pct=dt=>((new Date(dt)-min)/86400000)/span*100;
+  const hoy=new Date(new Date().toDateString());
+  const hoyPct=(hoy>=min&&hoy<=max)?((hoy-min)/86400000)/span*100:null;
+  // etiquetas de mes
+  const meses=[];let cur=new Date(min.getFullYear(),min.getMonth(),1);
+  while(cur<=max){meses.push(new Date(cur));cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
+  const mesLbl=meses.map(m=>`<div style="flex:1;font-size:10.5px;color:var(--txt3);border-left:1px solid var(--line);padding-left:6px;font-family:'DM Mono'">${m.toLocaleDateString("es-MX",{month:"short",year:"2-digit"})}</div>`).join("");
+  const rows=acts.map((a,i)=>{
+    const l=pct(a.inicio),w=Math.max(1.5,pct(a.entrega)-l);
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <div style="width:210px;flex-shrink:0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="display:inline-block;width:20px;color:var(--txt3);font-family:'DM Mono';font-size:11px">${i+1}.</span>${esc(a.actividad)}</div>
+      <div style="flex:1;position:relative;height:22px;background:var(--panel);border-radius:5px">
+        ${hoyPct!=null?`<div style="position:absolute;top:-4px;bottom:-4px;left:${hoyPct}%;width:2px;background:var(--s-bloq);z-index:3"></div>`:''}
+        <div style="position:absolute;top:3px;height:16px;left:${l}%;width:${w}%;background:${COLOR[a.estado]};border-radius:5px;min-width:6px" title="${a.inicio} → ${a.entrega}"></div>
+      </div></div>`;
+  }).join("");
+  return `<div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Gantt</h3>${hoyPct!=null?'<span class="count" style="color:var(--s-bloq)">línea roja = hoy</span>':''}</div>
+    <div style="padding:16px 18px">
+      <div style="display:flex;gap:10px;margin-bottom:10px"><div style="width:210px;flex-shrink:0"></div><div style="flex:1;display:flex">${mesLbl}</div></div>
+      ${rows}
+    </div></div>`+leyenda();
+}
+
+/* --- SUB: KANBAN --- */
+function subKanban(p){
+  const cols=ESTADOS.map(e=>{
+    const cards=p.actividades.filter(a=>a.estado===e).map(a=>`
+      <div class="kcard" style="border-top:3px solid ${COLOR[e]}">
+        <div class="kt">${esc(a.actividad)}</div>
+        <div class="km"><span class="person">${ava(a.resp)}<span style="font-size:10.5px">${esc(a.resp)}</span></span></div>
+        <div class="km" style="margin-top:5px"><span style="font-size:10px;color:var(--txt3)">${a.entrega||"—"}</span><span class="pill" style="background:${PRIORIDAD[a.prioridad]}22;color:${PRIORIDAD[a.prioridad]};font-size:9.5px">${a.prioridad}</span></div>
+        <select class="kmove" onchange="updEstado('${a.id}',this.value)">${ESTADOS.map(s=>`<option ${s===e?'selected':''}>${s}</option>`).join("")}</select>
+      </div>`).join("")||'<div style="font-size:11px;color:var(--txt3);padding:6px">—</div>';
+    return `<div class="kcol"><h4 style="color:${COLOR[e]}">${e} <span style="color:var(--txt3)">${p.actividades.filter(a=>a.estado===e).length}</span></h4>${cards}</div>`;
+  }).join("");
+  return `<div class="kanban">${cols}</div>`;
+}
+
+/* --- SUB: CALENDARIO --- */
+let CALREF=null;
+function calNav(delta){if(!CALREF)CALREF=new Date();CALREF=new Date(CALREF.getFullYear(),CALREF.getMonth()+delta,1);renderProyecto();}
+function calHoy(){CALREF=new Date();renderProyecto();}
+function subCalendario(p){
+  const acts=p.actividades.filter(a=>a.entrega);
+  if(!acts.length)return `<div class="board"><div style="padding:20px;color:var(--txt3)">Sin fechas de entrega para mostrar en calendario.</div></div>`;
+  if(!CALREF){const base=acts.map(a=>new Date(a.entrega)).sort((a,b)=>a-b);CALREF=base.find(dt=>dt>=new Date(new Date().toDateString()))||base[0];CALREF=new Date(CALREF.getFullYear(),CALREF.getMonth(),1);}
+  const y=CALREF.getFullYear(),m=CALREF.getMonth();
+  const first=new Date(y,m,1),start=(first.getDay()+6)%7;
+  const dias=new Date(y,m+1,0).getDate();
+  const dowk=["L","M","M","J","V","S","D"];
+  let cells="";
+  for(let i=0;i<start;i++)cells+=`<div class="cal-cell empty"></div>`;
+  for(let dnum=1;dnum<=dias;dnum++){
+    const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(dnum).padStart(2,"0")}`;
+    const evs=acts.filter(a=>a.entrega===ds);
+    const isHoy=ds===new Date().toISOString().slice(0,10);
+    cells+=`<div class="cal-cell${isHoy?' hoy':''}"><div class="cal-d">${dnum}</div>${evs.map(a=>`<div class="cal-ev" style="background:${COLOR[a.estado]}1e;color:var(--txt);border-left:3px solid ${COLOR[a.estado]}">${esc(a.actividad)}</div>`).join("")}</div>`;
+  }
+  return `<div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3 style="text-transform:capitalize">${CALREF.toLocaleDateString("es-MX",{month:"long",year:"numeric"})}</h3>
+      <div style="margin-left:auto;display:flex;gap:6px"><button class="btn-ghost" style="padding:5px 11px" onclick="calNav(-1)">‹</button><button class="btn-ghost" style="padding:5px 11px" onclick="calHoy()">Hoy</button><button class="btn-ghost" style="padding:5px 11px" onclick="calNav(1)">›</button></div></div>
+    <div style="padding:14px 16px">
+      <div class="cal-grid cal-head">${dowk.map(x=>`<div>${x}</div>`).join("")}</div>
+      <div class="cal-grid">${cells}</div>
+    </div></div>`+leyenda();
+}
+
+/* --- SUB: RIESGOS (del proyecto) --- */
+function subRiesgos(p){
+  if(!p.riesgos)p.riesgos=[];
+  const rs=[...p.riesgos].filter(r=>r.estatus!=="cerrado").sort((a,b)=>nivelRiesgo(b)-nivelRiesgo(a));
+  const rows=rs.map(r=>{const n=nivelRiesgo(r);return `<tr class="airow">
+    <td class="grpbar"><span class="gbar" style="background:${nivelColor(n)}"></span></td>
+    <td class="cellpad"><span class="actv">${esc(r.desc)}</span></td>
+    <td class="cellpad">${esc(r.resp)}</td>
+    <td style="text-align:center"><select class="estado" style="background:var(--panel);color:var(--txt);width:56px;margin:9px auto" onchange="updRiesgo('${p.id}','${r.id}','prob',+this.value)">${[1,2,3,4,5].map(v=>`<option ${v===r.prob?'selected':''}>${v}</option>`).join("")}</select></td>
+    <td style="text-align:center"><select class="estado" style="background:var(--panel);color:var(--txt);width:56px;margin:9px auto" onchange="updRiesgo('${p.id}','${r.id}','imp',+this.value)">${[1,2,3,4,5].map(v=>`<option ${v===r.imp?'selected':''}>${v}</option>`).join("")}</select></td>
+    <td style="text-align:center"><span class="estado" style="background:${nivelColor(n)};color:${(n>=4&&n<8)?'#1C1F3B':'#fff'};display:inline-block;width:auto;min-width:100px;margin:9px auto">${n} · ${nivelTxt(n)}</span></td>
+  </tr>`;}).join("");
+  let matriz='<table style="width:auto;margin-top:6px"><tbody>';
+  for(let i=5;i>=1;i--){matriz+=`<tr><td style="font-size:10px;color:var(--txt3);padding:2px 6px">${i}</td>`;
+    for(let pr=1;pr<=5;pr++){const n=i*pr;const cnt=rs.filter(r=>r.imp===i&&r.prob===pr).length;
+      matriz+=`<td style="width:36px;height:32px;text-align:center;background:${nivelColor(n)};opacity:${cnt?1:.25};color:#fff;font-weight:700;border:2px solid #fff;border-radius:4px">${cnt||''}</td>`;}
+    matriz+='</tr>';}
+  matriz+='<tr><td></td>'+[1,2,3,4,5].map(pr=>`<td style="font-size:10px;color:var(--txt3);text-align:center">${pr}</td>`).join("")+'</tr></tbody></table>';
+  return `<div class="board"><div class="board-head"><span class="gc" style="background:#E2445C"></span><h3>Riesgos de ${esc(p.nombre)}</h3><span class="count">${rs.length}</span></div>
+    <table class="tbl"><thead><tr><th style="width:11px"></th><th>Riesgo</th><th>Responsable</th><th style="text-align:center">Prob.</th><th style="text-align:center">Impacto</th><th style="text-align:center;width:120px">Nivel</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="cellpad" style="color:var(--txt3)">Sin riesgos. Registra el primero.</td></tr>'}</tbody></table>
+    <div class="addrow" onclick="modalNuevoRiesgo('${p.id}')">+ Registrar riesgo</div></div>
+  <div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Matriz Probabilidad × Impacto</h3></div><div style="padding:14px 18px"><div style="font-size:11px;color:var(--txt3);margin-bottom:4px">Impacto ↑ · Probabilidad →</div>${matriz}</div></div>`;
+}
+function updRiesgo(pid,rid,campo,val){const p=proy(pid);const r=(p.riesgos||[]).find(x=>x.id===rid);if(r){r[campo]=val;save();renderProyecto();}}
+function modalNuevoRiesgo(pid){
+  openModal(`<h3>Registrar riesgo</h3>
+   <label>Descripción del riesgo</label><input id="rk_d" placeholder="¿Qué puede salir mal?">
+   <label>Responsable</label><input id="rk_r" placeholder="Área o persona">
+   <label>Probabilidad (1–5)</label><select id="rk_p"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+   <label>Impacto (1–5)</label><select id="rk_i"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarRiesgo('${pid}')">Guardar</button></div>`);
+}
+function guardarRiesgo(pid){
+  const d=$("#rk_d").value.trim();if(!d){alert("Escribe el riesgo");return;}
+  const p=proy(pid);if(!p.riesgos)p.riesgos=[];
+  p.riesgos.push({id:"r"+Date.now(),desc:d,proyecto:p.nombre,prob:+$("#rk_p").value,imp:+$("#rk_i").value,resp:$("#rk_r").value||"—",estatus:"abierto"});
+  save();closeModal();renderProyecto();
+}
+
+/* --- SUB: BITÁCORA (del proyecto) --- */
+function subBitacora(p){
+  const H=(STATE.hallazgos||[]).filter(h=>h.proyecto===p.nombre);
+  const cnt={A:0,B:0,C:0,D:0};H.forEach(h=>{if(cnt[h.fam]!=null)cnt[h.fam]++;});
+  const total=H.length||1;
+  const arr=Object.entries(cnt).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v);
+  const max=Math.max(1,...arr.map(a=>a.v));
+  let acc=0;const W=680,Hh=230,padL=40,padB=52,padT=22,plot=Hh-padB-padT,bw=(W-padL-40)/arr.length;
+  let bars="",dots=[],labels="";
+  arr.forEach((a,i)=>{const x=padL+i*bw,cx=x+bw/2,bh=a.v/max*plot,y=padT+plot-bh;const col=FAMILIAS[a.k].color;
+    bars+=`<rect x="${x+bw*0.2}" y="${y}" width="${bw*0.6}" height="${bh}" rx="5" fill="${col}"/><text x="${cx}" y="${y-7}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--txt)">${a.v}</text>`;
+    acc+=a.v;const py=padT+plot-(acc/total)*plot;dots.push([cx,py,Math.round(acc/total*100)]);
+    labels+=`<text x="${cx}" y="${Hh-padB+18}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--txt)">Fam ${a.k}</text>`;});
+  const poly=dots.map(d=>`${d[0]},${d[1]}`).join(" ");
+  const dHtml=dots.map(d=>`<circle cx="${d[0]}" cy="${d[1]}" r="4" fill="var(--txt)"/><text x="${d[0]}" y="${d[1]-9}" text-anchor="middle" font-size="10" fill="var(--txt)">${d[2]}%</text>`).join("");
+  const dom=arr[0];
+  const CM=k=>(STATE.contramedidas&&STATE.contramedidas[k])||FAMILIAS[k];
+  const Hf=BFILTRO==="todas"?H:H.filter(h=>h.fam===BFILTRO);
+  const rows=[...Hf].sort((a,b)=>a.fam.localeCompare(b.fam)).map((h,i)=>`<tr>
+    <td class="cellpad mono">${String(i+1).padStart(2,"0")}</td>
+    <td class="cellpad"><b>${esc(h.titulo)}</b><div style="font-size:11.5px;color:var(--txt3);margin-top:2px">${esc(h.detalle)}</div><div style="font-size:10.5px;color:var(--txt3);margin-top:2px">${esc(h.resp)}</div></td>
+    <td style="text-align:center"><span class="pill" style="background:${FAMILIAS[h.fam].color}22;color:${FAMILIAS[h.fam].color}">${h.fam}</span>${h.recurrente?'<div style="font-size:9px;color:#E2445C;font-family:DM Mono;margin-top:3px">RECURRENTE</div>':''}</td>
+    <td class="cellpad"><span class="pill ${h.impacto==='alto'?'r':h.impacto==='medio'?'a':'n'}">${h.impacto}</span></td>
+    <td style="text-align:center"><select class="estado" style="background:var(--panel);color:var(--txt);width:calc(100% - 12px)" onchange="updHallazgo('${h.id}',this.value)">${["abierto","por corregir","en curso","corregido","resuelto","cerrado"].map(s=>`<option ${s===h.estatus?'selected':''}>${s}</option>`).join("")}</select></td>
+  </tr>`).join("");
+  const filtros=`<div class="famfilt">${[["todas","Todas"],["A","A"],["B","B"],["C","C"],["D","D"]].map(([k,l])=>`<button class="${BFILTRO===k?'on':''}" style="${k!=='todas'&&BFILTRO===k?`background:${FAMILIAS[k].color};border-color:${FAMILIAS[k].color};color:#fff`:''}" onclick="setBFiltro('${k}')">${l}${k!=='todas'?` · ${cnt[k]}`:''}</button>`).join("")}</div>`;
+  const contra=Object.entries(FAMILIAS).map(([k,f])=>{const c=CM(k);return `<div class="board" style="border-top:3px solid ${f.color};margin-bottom:0"><div style="padding:14px 16px"><div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><span style="width:24px;height:24px;border-radius:6px;background:${f.color};color:#fff;display:grid;place-items:center;font-weight:700;font-family:DM Mono">${k}</span><b style="font-size:12.5px">Familia ${k} · ${cnt[k]}</b><button class="btn-ghost" style="margin-left:auto;padding:3px 10px;font-size:11px" onclick="modalEditarContra('${k}')">Editar</button></div><div style="font-size:12px;color:var(--txt2);line-height:1.5">${esc(c.contra)}</div><div style="font-size:11px;color:var(--txt3);margin-top:8px;padding-top:7px;border-top:1px solid var(--line)">Dueño: <b style="color:var(--accent)">${esc(c.dueno)}</b></div></div></div>`}).join("");
+  const pareto=H.length?`<div class="board"><div class="board-head"><span class="gc" style="background:#E2445C"></span><h3>Pareto por familia</h3></div><div style="padding:12px 18px"><svg viewBox="0 0 ${W} ${Hh}" style="width:100%;max-width:600px"><line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plot}" stroke="var(--line)"/><line x1="${padL}" y1="${padT+plot}" x2="${W-40}" y2="${padT+plot}" stroke="var(--line)"/>${bars}<polyline points="${poly}" fill="none" stroke="var(--txt)" stroke-width="2"/>${dHtml}${labels}</svg><p class="note">La <b>Familia ${dom.k} (${FAMILIAS[dom.k].nombre})</b> es la que más se repite en este proyecto.</p></div></div>`:"";
+  return `<div class="board" style="border:none;box-shadow:none;background:transparent;margin-bottom:8px"><p class="sub" style="margin:0">Hallazgos de este proyecto, clasificados por causa raíz. Registra lo que salió mal para no repetirlo.</p></div>
+    ${pareto}
+    <div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Registro de hallazgos</h3><span class="count">${Hf.length}${BFILTRO!=='todas'?' de '+H.length:''}</span><div style="margin-left:auto">${filtros}</div></div>
+      <table class="tbl"><thead><tr><th>#</th><th>Hallazgo</th><th style="text-align:center">Familia</th><th>Impacto</th><th style="text-align:center;width:130px">Estatus</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="cellpad" style="color:var(--txt3)">Sin hallazgos en este filtro.</td></tr>'}</tbody></table>
+      <div class="addrow" onclick="modalNuevoHallazgoProy('${p.id}')">+ Registrar hallazgo</div></div>
+    <div style="font-size:13px;font-weight:700;margin:6px 0 10px">Contramedidas replicables</div><div class="dashgrid" style="grid-template-columns:repeat(2,1fr)">${contra}</div>`;
+}
+function setBFiltro(f){BFILTRO=f;renderProyecto();}
+function modalEditarContra(k){
+  const c=(STATE.contramedidas&&STATE.contramedidas[k])||FAMILIAS[k];
+  openModal(`<h3>Contramedida · Familia ${k}</h3>
+   <p style="font-size:12px;color:var(--txt3);margin-bottom:8px">${esc(FAMILIAS[k].nombre)}</p>
+   <label>Contramedida (regla para que no se repita)</label><textarea id="cm_t" style="width:100%;height:90px;font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:9px">${esc(c.contra)}</textarea>
+   <label>Dueño</label><input id="cm_d" value="${esc(c.dueno)}">
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarContra('${k}')">Guardar</button></div>`);
+}
+function guardarContra(k){
+  if(!STATE.contramedidas)STATE.contramedidas={};
+  STATE.contramedidas[k]={contra:$("#cm_t").value.trim()||FAMILIAS[k].contra,dueno:$("#cm_d").value.trim()||FAMILIAS[k].dueno};
+  save();closeModal();renderProyecto();
+}
+function modalNuevoHallazgoProy(pid){
+  const p=proy(pid);
+  openModal(`<h3>Registrar hallazgo · ${esc(p.nombre)}</h3>
+   <label>Título</label><input id="h_t" placeholder="¿Qué se detectó?">
+   <label>Detalle</label><input id="h_d" placeholder="Descripción breve">
+   <label>Familia</label><select id="h_f">${Object.entries(FAMILIAS).map(([k,f])=>`<option value="${k}">${k} · ${f.nombre}</option>`).join("")}</select>
+   <label>Responsable de origen</label><input id="h_r" placeholder="Área o persona">
+   <label>Impacto</label><select id="h_i"><option>alto</option><option selected>medio</option><option>bajo</option></select>
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarHallazgoProy('${pid}')">Guardar</button></div>`);
+}
+function guardarHallazgoProy(pid){
+  const t=$("#h_t").value.trim();if(!t){alert("Escribe el título");return;}
+  const p=proy(pid);if(!STATE.hallazgos)STATE.hallazgos=[];
+  STATE.hallazgos.push({id:"h"+Date.now(),fecha:new Date().toISOString().slice(0,10),proyecto:p.nombre,titulo:t,detalle:$("#h_d").value,fam:$("#h_f").value,resp:$("#h_r").value,recurrente:false,impacto:$("#h_i").value,estatus:"abierto"});
+  save();closeModal();renderProyecto();
+}
+
+/* --- SUB: DASHBOARD DEL PROYECTO --- */
+function subDashboard(p){
+  const av=avanceProy(p);
+  const porEst={};ESTADOS.forEach(e=>porEst[e]=p.actividades.filter(a=>a.estado===e).length);
+  const maxEst=Math.max(1,...Object.values(porEst));
+  const vc=vencidas(p),prox=proxHitos(p,3);
+  // carga por responsable (avance promedio)
+  const resp={};p.actividades.forEach(a=>{(resp[a.resp]=resp[a.resp]||[]).push(a.avance);});
+  const carga=Object.entries(resp).map(([r,arr])=>({r,pct:Math.round(arr.reduce((x,y)=>x+y,0)/arr.length)})).sort((a,b)=>b.pct-a.pct);
+  // donut
+  const R=52,C=2*Math.PI*R,off=C*(1-av/100);
+  const donut=`<svg viewBox="0 0 130 130" style="width:150px;height:150px"><circle cx="65" cy="65" r="${R}" fill="none" stroke="var(--panel)" stroke-width="14"/><circle cx="65" cy="65" r="${R}" fill="none" stroke="var(--s-term)" stroke-width="14" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="rotate(-90 65 65)"/><text x="65" y="72" text-anchor="middle" font-size="26" font-weight="700" fill="var(--txt)">${av}%</text></svg>`;
+  const barsEst=ESTADOS.map(e=>`<div style="text-align:center;flex:1"><div style="height:90px;display:flex;align-items:flex-end;justify-content:center"><div style="width:56%;height:${porEst[e]/maxEst*100}%;background:${COLOR[e]};border-radius:5px 5px 0 0;min-height:3px;position:relative"><span style="position:absolute;top:-18px;left:0;right:0;font-size:12px;font-weight:700">${porEst[e]}</span></div></div><div style="font-size:9px;color:var(--txt3);margin-top:5px;line-height:1.15;min-height:22px">${e}</div></div>`).join("");
+  const cargaHtml=carga.map(c=>`<div style="display:flex;align-items:center;gap:9px;margin-bottom:7px"><span class="person" style="width:130px;flex-shrink:0">${ava(c.r)}<span style="font-size:11.5px">${esc(c.r)}</span></span><div class="avbar" style="flex:1"><div class="avfill" style="width:${c.pct}%;background:${c.pct>=60?'var(--s-term)':'var(--s-proc)'}"></div></div><span class="avnum">${c.pct}%</span></div>`).join("");
+  return `<div class="dashgrid">
+    <div class="board"><div class="board-head"><h3>Avance general</h3></div><div style="padding:18px;display:flex;justify-content:center">${donut}</div></div>
+    <div class="board"><div class="board-head"><h3>Actividades por estado</h3></div><div style="padding:22px 18px 14px;display:flex;gap:6px">${barsEst}</div></div>
+    <div class="board"><div class="board-head"><h3>Actividades vencidas</h3></div><div style="padding:18px;text-align:center"><div style="font-size:46px;font-weight:700;color:${vc.length?'var(--s-bloq)':'var(--s-term)'}">${vc.length}</div><div style="font-size:12px;color:var(--txt3)">${vc.length?'requieren atención':'¡Buen trabajo!'}</div></div></div>
+    <div class="board"><div class="board-head"><h3>Próximas entregas</h3></div><div style="padding:14px 18px">${prox.length?prox.map((a,i)=>`<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--line)"><span>${i+1}. ${esc(a.actividad)}</span><span class="mono" style="color:var(--txt3)">${a.entrega||"—"}</span></div>`).join(""):'<div style="color:var(--txt3);font-size:12px">Sin pendientes.</div>'}</div></div>
+    <div class="board" style="grid-column:1/-1"><div class="board-head"><h3>Carga de trabajo por responsable</h3></div><div style="padding:16px 18px">${cargaHtml}</div></div>
+    ${(()=>{const rs=(p.riesgos||[]).filter(r=>r.estatus!=="cerrado").sort((a,b)=>nivelRiesgo(b)-nivelRiesgo(a));if(!rs.length)return "";return `<div class="board" style="grid-column:1/-1"><div class="board-head"><span class="gc" style="background:#E2445C"></span><h3>Riesgos principales</h3><span class="count">${rs.length}</span></div><div style="padding:12px 18px">${rs.map(r=>{const n=nivelRiesgo(r);return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)"><span>${esc(r.desc)} <span style="color:var(--txt3)">· ${esc(r.resp)}</span></span><span class="pill" style="background:${nivelColor(n)};color:#fff">${nivelTxt(n)}</span></div>`}).join("")}</div></div>`;})()}
+  </div>`;
+}
+
+/* ===== UPDATES ===== */
+function updEstado(id,val){const a=findAct(id);if(!a)return;a.estado=val;a.avance=AVANCE_DEF[val];save();renderProyecto();}
+function updAct(id,campo,val){const a=findAct(id);if(!a)return;a[campo]=val;save();if(campo==="prioridad")renderProyecto();}
+function findAct(id){for(const p of STATE.proyectos){const a=p.actividades.find(x=>x.id===id);if(a)return a;}return null;}
+
+/* ===== MODALES (captura en formulario, no prompts) ===== */
+function openModal(html){$("#modal").innerHTML=html;$("#modalBg").classList.add("on");}
+function closeModal(){$("#modalBg").classList.remove("on");}
+$("#modalBg").addEventListener("click",e=>{if(e.target.id==="modalBg")closeModal();});
+
+function modalNuevaActividad(fase){
+  openModal(`<h3>Nueva actividad · ${esc(fase)}</h3>
+   <label>Actividad</label><input id="m_act" placeholder="¿Qué hay que hacer?">
+   <label>Responsable</label><input id="m_resp" placeholder="Área o persona">
+   <label>Inicio</label><input id="m_ini" type="date">
+   <label>Entrega</label><input id="m_ent" type="date">
+   <label>Estado</label><select id="m_est">${ESTADOS.map(e=>`<option>${e}</option>`).join("")}</select>
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarActividad('${esc(fase)}')">Guardar</button></div>`);
+}
+function guardarActividad(fase){
+  const a=$("#m_act").value.trim();if(!a){alert("Escribe la actividad");return;}
+  const p=proy(CUR);
+  p.actividades.push(act(fase,a,$("#m_resp").value||"Por definir",$("#m_ini").value,$("#m_ent").value,$("#m_est").value));
+  save();closeModal();renderProyecto();
+}
+function modalNuevoProyecto(){
+  openModal(`<h3>Nuevo proyecto</h3>
+   <label>Nombre</label><input id="m_nom" placeholder="Nombre del proyecto">
+   <label>Cliente</label><input id="m_cli" placeholder="Cliente / descripción">
+   <label>Valor c/IVA (opcional)</label><input id="m_val" type="number" placeholder="0">
+   <label>Fecha de entrega</label><input id="m_fec" type="date">
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarProyecto()">Crear tablero</button></div>`);
+}
+function guardarProyecto(){
+  const n=$("#m_nom").value.trim();if(!n){alert("Escribe el nombre");return;}
+  STATE.proyectos.push({id:"p"+Date.now(),nombre:n,cliente:$("#m_cli").value||"",valor:Number($("#m_val").value)||0,inauguracion:$("#m_fec").value||"",riesgos:[],
+   actividades:[
+    act("Planeación","Confirmar alcance","Project Manager","","","No iniciado"),
+    act("Diseño","Elaborar propuesta","Diseño","","","No iniciado"),
+    act("Producción","Fabricar","Producción","","","No iniciado"),
+    act("Instalación","Instalar","Taller","","","No iniciado"),
+    act("Cierre","Obtener conformidad","Project Manager","","","No iniciado")
+   ]});
+  save();closeModal();renderMaestro();
+}
+function eliminarProyecto(id){
+  const p=proy(id);if(!p)return;
+  if(!confirm(`¿Eliminar el proyecto "${p.nombre}"? Se borran sus actividades, riesgos y bitácora. Esta acción no se puede deshacer.`))return;
+  STATE.proyectos=STATE.proyectos.filter(x=>x.id!==id);
+  if(STATE.hallazgos)STATE.hallazgos=STATE.hallazgos.filter(h=>h.proyecto!==p.nombre);
+  if(CUR===id)CUR=null;
+  save();setV("maestro");
+}
+
+/* ===== TABLERO DE RIESGOS ===== */
+function nivelRiesgo(r){return (r.prob||0)*(r.imp||0);}
+function nivelTxt(n){return n>=15?"Crítico":n>=8?"Alto":n>=4?"Medio":"Bajo";}
+function nivelColor(n){return n>=15?"#E2445C":n>=8?"#FDAB3D":n>=4?"#FFCB00":"#00C875";}
+function allRiesgos(){const r=[];STATE.proyectos.forEach(p=>(p.riesgos||[]).forEach(x=>r.push(x)));return r;}
+function renderRiesgos(){
+  const rs=allRiesgos().filter(r=>r.estatus!=="cerrado").sort((a,b)=>nivelRiesgo(b)-nivelRiesgo(a));
+  const rows=rs.map(r=>{const n=nivelRiesgo(r);return `<tr>
+    <td class="grpbar"><span class="gbar" style="background:${nivelColor(n)}"></span></td>
+    <td class="cellpad"><span class="actv">${esc(r.desc)}</span><div style="font-size:11px;color:var(--txt3)">${esc(r.proyecto)}</div></td>
+    <td class="cellpad">${esc(r.resp)}</td>
+    <td class="cellpad" style="text-align:center">${r.prob}</td>
+    <td class="cellpad" style="text-align:center">${r.imp}</td>
+    <td style="text-align:center;font-weight:700;color:#fff;background:${nivelColor(n)}">${n} · ${nivelTxt(n)}</td>
+  </tr>`;}).join("");
+  let matriz='<table style="width:auto;margin-top:6px"><tbody>';
+  for(let i=5;i>=1;i--){matriz+=`<tr><td style="font-size:10px;color:var(--txt3);padding:2px 6px">${i}</td>`;
+    for(let p=1;p<=5;p++){const n=i*p;const cnt=rs.filter(r=>r.imp===i&&r.prob===p).length;
+      matriz+=`<td style="width:38px;height:34px;text-align:center;background:${nivelColor(n)};opacity:${cnt?1:.28};color:#fff;font-weight:700;border:2px solid #fff;border-radius:4px">${cnt||''}</td>`;}
+    matriz+='</tr>';}
+  matriz+='<tr><td></td>'+[1,2,3,4,5].map(p=>`<td style="font-size:10px;color:var(--txt3);text-align:center">${p}</td>`).join("")+'</tr></tbody></table>';
+  $("#v-riesgos").innerHTML=`
+    <div class="eyebrow">Gestión · Identificar y controlar riesgos</div>
+    <div class="h1">Tablero de Riesgos</div>
+    <p class="sub">Todos los riesgos del portafolio, ordenados por nivel = Probabilidad × Impacto (1–5 cada uno). Los críticos van arriba: ahí pones tu energía.</p>
+    <div class="strip">
+      <div class="chip"><div class="k">Riesgos abiertos</div><div class="v">${rs.length}</div></div>
+      <div class="chip"><div class="k">Críticos</div><div class="v" style="color:#E2445C">${rs.filter(r=>nivelRiesgo(r)>=15).length}</div></div>
+      <div class="chip"><div class="k">Altos</div><div class="v" style="color:#FDAB3D">${rs.filter(r=>{const n=nivelRiesgo(r);return n>=8&&n<15;}).length}</div></div>
+    </div>
+    <div class="board"><div class="board-head"><span class="gc" style="background:#E2445C"></span><h3>Registro de riesgos</h3><span class="count">${rs.length}</span></div>
+      <table class="tbl"><thead><tr><th style="width:6px"></th><th>Riesgo</th><th>Responsable</th><th style="text-align:center">Prob.</th><th style="text-align:center">Impacto</th><th style="text-align:center;width:130px">Nivel</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="cellpad" style="color:var(--txt3)">Sin riesgos abiertos.</td></tr>'}</tbody></table>
+    </div>
+    <div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Matriz Probabilidad × Impacto</h3></div>
+      <div style="padding:14px 18px"><div style="font-size:11px;color:var(--txt3);margin-bottom:4px">Impacto ↑ · Probabilidad →</div>${matriz}</div></div>`;
+}
+
+/* ===== BITÁCORA DE HALLAZGOS (portafolio + Pareto) ===== */
+function renderBitacora(){
+  const H=STATE.hallazgos||[];
+  const cnt={A:0,B:0,C:0,D:0};H.forEach(h=>{if(cnt[h.fam]!=null)cnt[h.fam]++;});
+  const total=H.length||1;
+  const arr=Object.entries(cnt).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v);
+  const max=Math.max(1,...arr.map(a=>a.v));
+  let acc=0;const W=680,Hh=250,padL=40,padB=54,padT=24,plot=Hh-padB-padT,bw=(W-padL-40)/arr.length;
+  let bars="",dots=[],labels="";
+  arr.forEach((a,i)=>{const x=padL+i*bw,cx=x+bw/2,bh=a.v/max*plot,y=padT+plot-bh;const col=FAMILIAS[a.k].color;
+    bars+=`<rect x="${x+bw*0.2}" y="${y}" width="${bw*0.6}" height="${bh}" rx="5" fill="${col}"/><text x="${cx}" y="${y-7}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--txt)">${a.v}</text>`;
+    acc+=a.v;const py=padT+plot-(acc/total)*plot;dots.push([cx,py,Math.round(acc/total*100)]);
+    labels+=`<text x="${cx}" y="${Hh-padB+18}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--txt)">Fam ${a.k}</text>`;});
+  const poly=dots.map(d=>`${d[0]},${d[1]}`).join(" ");
+  const dHtml=dots.map(d=>`<circle cx="${d[0]}" cy="${d[1]}" r="4" fill="var(--txt)"/><text x="${d[0]}" y="${d[1]-9}" text-anchor="middle" font-size="10" fill="var(--txt)">${d[2]}%</text>`).join("");
+  const dom=arr[0];
+  const rows=[...H].sort((a,b)=>a.fam.localeCompare(b.fam)).map((h,i)=>`<tr>
+    <td class="cellpad mono">${String(i+1).padStart(2,"0")}</td>
+    <td class="cellpad"><b>${esc(h.titulo)}</b><div style="font-size:11.5px;color:var(--txt3);margin-top:2px">${esc(h.detalle)}</div><div style="font-size:10.5px;color:var(--txt3);margin-top:2px">${esc(h.proyecto)} · ${esc(h.resp)}</div></td>
+    <td style="text-align:center"><span class="pill" style="background:${FAMILIAS[h.fam].color}22;color:${FAMILIAS[h.fam].color}">${h.fam}</span>${h.recurrente?'<div style="font-size:9px;color:#E2445C;font-family:DM Mono;margin-top:3px">RECURRENTE</div>':''}</td>
+    <td class="cellpad"><span class="pill ${h.impacto==='alto'?'r':h.impacto==='medio'?'a':'n'}">${h.impacto}</span></td>
+    <td style="text-align:center"><select class="estado" style="color:var(--txt);font-weight:600" onchange="updHallazgo('${h.id}',this.value)">${["abierto","por corregir","en curso","corregido","resuelto","cerrado"].map(s=>`<option ${s===h.estatus?'selected':''}>${s}</option>`).join("")}</select></td>
+  </tr>`).join("");
+  const contra=Object.entries(FAMILIAS).map(([k,f])=>`<div class="board" style="border-top:3px solid ${f.color};margin-bottom:0">
+    <div style="padding:14px 16px"><div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><span style="width:26px;height:26px;border-radius:7px;background:${f.color};color:#fff;display:grid;place-items:center;font-weight:700;font-family:DM Mono">${k}</span><b style="font-size:13px">Familia ${k} · ${cnt[k]} caso(s)</b></div>
+    <div style="font-size:12.5px;color:var(--txt2);line-height:1.5">${esc(f.contra)}</div>
+    <div style="font-size:11px;color:var(--txt3);margin-top:9px;padding-top:8px;border-top:1px solid var(--line)">Dueño: <b style="color:var(--accent)">${esc(f.dueno)}</b></div></div></div>`).join("");
+  $("#v-bitacora").innerHTML=`
+    <div class="eyebrow">Aprendizaje · Directiva Fernando</div>
+    <div class="h1">Bitácora de Hallazgos</div>
+    <p class="sub">Los hallazgos de todos los proyectos, clasificados por familia de causa raíz. Sirven para aprender: atacas la familia que más se repite con una sola contramedida, y no vuelve a pasar en el siguiente proyecto.</p>
+    <div class="strip">
+      <div class="chip"><div class="k">Hallazgos</div><div class="v">${H.length}</div></div>
+      <div class="chip"><div class="k">Familia dominante</div><div class="v" style="color:#E2445C">${Math.round(dom.v/total*100)}%</div></div>
+      <div class="chip"><div class="k">Abiertos</div><div class="v" style="color:#FDAB3D">${H.filter(h=>['abierto','por corregir','en curso'].includes(h.estatus)).length}</div></div>
+      <div class="chip"><div class="k">Contramedidas</div><div class="v" style="color:#00C875">4</div></div>
+    </div>
+    <div class="board"><div class="board-head"><span class="gc" style="background:#E2445C"></span><h3>Pareto por familia</h3></div>
+      <div style="padding:12px 18px"><svg viewBox="0 0 ${W} ${Hh}" style="width:100%;max-width:640px"><line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plot}" stroke="var(--line)"/><line x1="${padL}" y1="${padT+plot}" x2="${W-40}" y2="${padT+plot}" stroke="var(--line)"/>${bars}<polyline points="${poly}" fill="none" stroke="var(--txt)" stroke-width="2"/>${dHtml}${labels}</svg>
+      <p class="note">La <b>Familia ${dom.k} (${FAMILIAS[dom.k].nombre})</b> concentra ${dom.v} de ${H.length} hallazgos. Una sola contramedida en el intake desactiva la mayor parte del problema — para todos los proyectos.</p></div></div>
+    <div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Registro de hallazgos</h3><span class="count">${H.length}</span></div>
+      <table class="tbl"><thead><tr><th>#</th><th>Hallazgo</th><th style="text-align:center">Familia</th><th>Impacto</th><th style="text-align:center;width:140px">Estatus</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="addrow" onclick="modalNuevoHallazgo()">+ Registrar hallazgo</div></div>
+    <div style="font-size:13px;font-weight:700;margin:6px 0 10px">Contramedidas replicables</div>
+    <div class="dashgrid" style="grid-template-columns:repeat(2,1fr)">${contra}</div>`;
+}
+function updHallazgo(id,val){const h=STATE.hallazgos.find(x=>x.id===id);if(h){h.estatus=val;save();renderBitacora();}}
+function modalNuevoHallazgo(){
+  openModal(`<h3>Registrar hallazgo</h3>
+   <label>Título</label><input id="h_t" placeholder="¿Qué se detectó?">
+   <label>Detalle</label><input id="h_d" placeholder="Descripción breve">
+   <label>Familia</label><select id="h_f">${Object.entries(FAMILIAS).map(([k,f])=>`<option value="${k}">${k} · ${f.nombre}</option>`).join("")}</select>
+   <label>Proyecto</label><select id="h_p">${STATE.proyectos.map(p=>`<option>${esc(p.nombre)}</option>`).join("")}</select>
+   <label>Responsable de origen</label><input id="h_r" placeholder="Área o persona">
+   <label>Impacto</label><select id="h_i"><option>alto</option><option selected>medio</option><option>bajo</option></select>
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarHallazgo()">Guardar</button></div>`);
+}
+function guardarHallazgo(){
+  const t=$("#h_t").value.trim();if(!t){alert("Escribe el título");return;}
+  STATE.hallazgos.push({id:"h"+Date.now(),fecha:new Date().toISOString().slice(0,10),proyecto:$("#h_p").value,titulo:t,detalle:$("#h_d").value,fam:$("#h_f").value,resp:$("#h_r").value,recurrente:false,impacto:$("#h_i").value,estatus:"abierto"});
+  save();closeModal();renderBitacora();
+}
+
+/* ===== SOLICITUDES ===== */
+function renderSolicitudes(){
+  if(!STATE.solicitudes)STATE.solicitudes=[];
+  const rows=STATE.solicitudes.map(s=>`<tr><td class="cellpad"><b>${esc(s.titulo)}</b><div style="font-size:11px;color:var(--txt3)">${esc(s.desc||'')}</div></td><td class="cellpad">${esc(s.de)}</td><td class="cellpad mono">${s.fecha}</td><td style="text-align:center"><span class="pill ${s.estatus==='atendida'?'g':'a'}">${s.estatus}</span></td></tr>`).join("");
+  $("#v-solicitudes").innerHTML=`
+    <div class="eyebrow">Recibir solicitudes</div>
+    <div class="h1">Solicitudes</div>
+    <p class="sub">Peticiones que llegan de otras áreas (nuevos proyectos, cambios, urgencias). Aquí las registras para que nada se pierda en el chat o el correo.</p>
+    <div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Bandeja de solicitudes</h3><span class="count">${STATE.solicitudes.length}</span></div>
+      <table class="tbl"><thead><tr><th>Solicitud</th><th>De</th><th>Fecha</th><th style="text-align:center;width:110px">Estatus</th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="cellpad" style="color:var(--txt3)">Sin solicitudes. Usa el botón para registrar una.</td></tr>'}</tbody></table>
+      <div class="addrow" onclick="modalNuevaSolicitud()">+ Registrar solicitud</div></div>`;
+}
+function modalNuevaSolicitud(){
+  openModal(`<h3>Nueva solicitud</h3>
+   <label>Título</label><input id="s_t" placeholder="¿Qué se solicita?">
+   <label>Descripción</label><input id="s_d" placeholder="Detalle">
+   <label>De (área/persona)</label><input id="s_de" placeholder="Quién la pide">
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarSolicitud()">Guardar</button></div>`);
+}
+function guardarSolicitud(){
+  const t=$("#s_t").value.trim();if(!t){alert("Escribe el título");return;}
+  if(!STATE.solicitudes)STATE.solicitudes=[];
+  STATE.solicitudes.push({id:"s"+Date.now(),titulo:t,desc:$("#s_d").value,de:$("#s_de").value||"—",fecha:new Date().toISOString().slice(0,10),estatus:"pendiente"});
+  save();closeModal();renderSolicitudes();
+}
+
+/* ===== IMPORTAR / EXPORTAR (JSON estándar) ===== */
+function modalImportar(){
+  openModal(`<h3>Importar / Exportar datos</h3>
+   <p style="font-size:12.5px;color:var(--txt2);margin-bottom:10px">Pega el JSON estandarizado (el que te devuelve el análisis del chat) y presiona <b>Importar</b>. O usa <b>Exportar</b> para copiar el estado actual y mandármelo a analizar.</p>
+   <textarea id="imp_txt" style="width:100%;height:170px;font-family:'DM Mono';font-size:11px;border:1px solid var(--line);border-radius:8px;padding:10px" placeholder='{"proyecto":"...","actividades":[...]}'></textarea>
+   <div class="actions"><button class="btn-ghost" onclick="exportarJSON()">⬇ Exportar (copiar)</button><button class="btn" onclick="importarJSON()">⬆ Importar</button></div>
+   <p style="font-size:11px;color:var(--txt3);margin-top:10px">Importar reemplaza proyectos con el mismo id y agrega los nuevos. Hallazgos también se fusionan.</p>`);
+}
+function exportarJSON(){const t=$("#imp_txt");t.value=JSON.stringify({proyectos:STATE.proyectos,hallazgos:STATE.hallazgos},null,2);t.select();try{document.execCommand("copy");}catch(e){}alert("Estado copiado al cuadro. Cópialo y pégamelo en el chat.");}
+function importarJSON(){
+  let data;try{data=JSON.parse($("#imp_txt").value);}catch(e){alert("El JSON no es válido.");return;}
+  let n=0;
+  if(Array.isArray(data.proyectos))data.proyectos.forEach(np=>{const i=STATE.proyectos.findIndex(p=>p.id===np.id);if(i>=0)STATE.proyectos[i]=np;else STATE.proyectos.push(np);n++;});
+  else if(data.proyecto&&Array.isArray(data.actividades)){let p=STATE.proyectos.find(x=>x.nombre===data.proyecto);
+    if(!p){p={id:"p"+Date.now(),nombre:data.proyecto,cliente:data.cliente||"",valor:data.valor||0,inauguracion:data.inauguracion||"",actividades:[],riesgos:[]};STATE.proyectos.push(p);}
+    data.actividades.forEach(a=>p.actividades.push(act(a.fase||"Planeación",a.actividad,a.responsable||a.resp||"Por definir",a.inicio||"",a.entrega||"",a.estado||"No iniciado",a.prioridad)));n++;}
+  if(Array.isArray(data.hallazgos)){if(!STATE.hallazgos)STATE.hallazgos=[];data.hallazgos.forEach(h=>{const i=STATE.hallazgos.findIndex(x=>x.id===h.id);if(i>=0)STATE.hallazgos[i]=h;else STATE.hallazgos.push(h);});}
+  save();closeModal();setV("maestro");alert("Importado. Se actualizaron "+n+" proyecto(s).");
+}
+
+normaliza();
+renderSidebar();
+renderMaestro();
+bootFirebase();
+</script>
+</body>
+</html>
