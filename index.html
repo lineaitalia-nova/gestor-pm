@@ -70,6 +70,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 .tbl.fixed{table-layout:fixed}
 .tbl.fixed td{overflow:hidden}
 .tbl.fixed .actv{word-break:break-word;display:block}
+.actv-edit{cursor:pointer;border-radius:5px;transition:.12s}
+.actv-edit:hover{color:var(--accent);text-decoration:underline}
 .tbl tr:last-child td{border-bottom:none}
 .tbl tr:hover{background:#FBFCFE}
 .cellpad{padding:6px 12px}
@@ -168,7 +170,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
   <div class="view" id="v-bitacora"></div>
   <div class="view" id="v-solicitudes"></div>
   <div class="view" id="v-proyecto"></div>
-  <div class="foot">Gestor de Proyectos Especiales · Línea Italia · <span id="syncf" style="font-weight:600">Firebase: iniciando…</span> · v26 (auth)</div>
+  <div class="foot">Gestor de Proyectos Especiales · Línea Italia · <span id="syncf" style="font-weight:600">Firebase: iniciando…</span> · v27 (auth · editar)</div>
 </main>
 </div>
 <div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
@@ -509,7 +511,7 @@ function subTabla(p){
       return `<tr>
         <td class="grpbar"><span class="gbar" style="background:${col}"></span></td>
         <td style="width:24px;text-align:center;color:var(--txt3);font-family:'DM Mono';font-size:11px">${(a._num||'')}</td>
-        <td class="cellpad"><span class="actv">${esc(a.actividad)}</span></td>
+        <td class="cellpad"><span class="actv actv-edit" onclick="modalEditarActividad('${a.id}')" title="Editar actividad">${esc(a.actividad)}</span></td>
         <td class="cellpad"><span class="person">${ava(a.resp)}<span>${esc(a.resp)}</span></span></td>
         <td class="datecell"><input type="date" value="${a.inicio||''}" onchange="updAct('${a.id}','inicio',this.value)"></td>
         <td class="datecell"><input type="date" value="${a.entrega||''}" onchange="updAct('${a.id}','entrega',this.value)">${atras?'<div style="font-size:9px;color:var(--s-bloq);padding-left:10px;font-weight:700">ATRASADA</div>':''}</td>
@@ -735,6 +737,38 @@ function subDashboard(p){
 function updEstado(id,val){const a=findAct(id);if(!a)return;a.estado=val;a.avance=AVANCE_DEF[val];save();renderProyecto();}
 function updAct(id,campo,val){const a=findAct(id);if(!a)return;a[campo]=val;save();if(campo==="prioridad")renderProyecto();}
 function findAct(id){for(const p of STATE.proyectos){const a=p.actividades.find(x=>x.id===id);if(a)return a;}return null;}
+function findActProj(id){for(const p of STATE.proyectos){const a=p.actividades.find(x=>x.id===id);if(a)return {p,a};}return null;}
+function modalEditarActividad(id){
+  const a=findAct(id);if(!a)return;
+  openModal(`<h3>Editar actividad</h3>
+   <label>Actividad</label><input id="e_act" value="${esc(a.actividad)}">
+   <label>Responsable</label><input id="e_resp" value="${esc(a.resp)}">
+   <label>Fase</label><select id="e_fase">${FASE_ORDEN.map(f=>`<option ${f===a.fase?'selected':''}>${f}</option>`).join("")}</select>
+   <label>Estado</label><select id="e_est">${ESTADOS.map(x=>`<option ${x===a.estado?'selected':''}>${x}</option>`).join("")}</select>
+   <label>Prioridad</label><select id="e_prio">${Object.keys(PRIORIDAD).map(x=>`<option ${x===a.prioridad?'selected':''}>${x}</option>`).join("")}</select>
+   <label>Inicio</label><input id="e_ini" type="date" value="${a.inicio||''}">
+   <label>Entrega</label><input id="e_ent" type="date" value="${a.entrega||''}">
+   <label>Avance (%)</label><input id="e_av" type="number" min="0" max="100" value="${a.avance}">
+   <div class="actions" style="justify-content:space-between">
+     <button class="btn-ghost" style="color:var(--s-bloq);border-color:var(--s-bloq)" onclick="eliminarActividad('${id}')">Eliminar</button>
+     <div style="display:flex;gap:10px"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarEdicionActividad('${id}')">Guardar</button></div>
+   </div>`);
+}
+function guardarEdicionActividad(id){
+  const a=findAct(id);if(!a)return;
+  const t=$("#e_act").value.trim();if(!t){alert("La actividad no puede quedar vacía");return;}
+  a.actividad=t; a.resp=$("#e_resp").value||"Por definir"; a.fase=$("#e_fase").value;
+  a.estado=$("#e_est").value; a.prioridad=$("#e_prio").value;
+  a.inicio=$("#e_ini").value; a.entrega=$("#e_ent").value;
+  const av=parseInt($("#e_av").value); a.avance=isNaN(av)?a.avance:Math.max(0,Math.min(100,av));
+  save();closeModal();renderProyecto();
+}
+function eliminarActividad(id){
+  const r=findActProj(id);if(!r)return;
+  if(!confirm(`¿Eliminar la actividad "${r.a.actividad}"? No se puede deshacer.`))return;
+  r.p.actividades=r.p.actividades.filter(x=>x.id!==id);
+  save();closeModal();renderProyecto();
+}
 
 /* ===== MODALES (captura en formulario, no prompts) ===== */
 function openModal(html){$("#modal").innerHTML=html;$("#modalBg").classList.add("on");}
