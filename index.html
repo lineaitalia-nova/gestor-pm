@@ -170,7 +170,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
   <div class="view" id="v-bitacora"></div>
   <div class="view" id="v-solicitudes"></div>
   <div class="view" id="v-proyecto"></div>
-  <div class="foot">Gestor de Proyectos Especiales · Línea Italia · <span id="syncf" style="font-weight:600">Firebase: iniciando…</span> · v27 (auth · editar)</div>
+  <div class="foot">Gestor de Proyectos Especiales · Línea Italia · <span id="syncf" style="font-weight:600">Firebase: iniciando…</span> · v28 (concentrado · hallazgos · informes)</div>
 </main>
 </div>
 <div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
@@ -190,31 +190,195 @@ const PERSON_COLOR={"Project Manager":"#2563EB","René Esparza":"#2563EB","Ingen
 /* ===== SEMILLA (datos reales Seguros Monterrey + TIMKEN + Hyatt) ===== */
 const PRIORIDAD={"Alta":"#A25DDC","Media":"#FDAB3D","Baja":"#579BFC"};
 function act(fase,actividad,resp,inicio,entrega,estado,prioridad){return {id:"a"+Math.random().toString(36).slice(2,8),fase,actividad,resp,inicio,entrega,estado,avance:AVANCE_DEF[estado],prioridad:prioridad||"Media",coms:0};}
-const SEED={proyectos:[
- {id:"segmty",nombre:"Seguros Monterrey",cliente:"MetLife · Programa multi-sucursal (10 áreas)",valor:15179310,inauguracion:"2026-08-31",
+const SEED={schema:11,proyectos:[
+ {id:"segmty",nombre:"Seguros Monterrey",cliente:"MetLife · Programa multi-sucursal (11 áreas · 4 ciudades + Chihuahua)",valor:15988011,inauguracion:"2026-10-23",
+  corte:"2026-08-27",
   riesgos:[
-   {id:"r_s1",desc:"Retraso en entrega de rodajas (importación)",proyecto:"Seguros Monterrey",prob:4,imp:5,resp:"Compras",estatus:"abierto"},
-   {id:"r_s2",desc:"Cambio de medidas / acabados por el cliente",proyecto:"Seguros Monterrey",prob:3,imp:3,resp:"Comercial",estatus:"abierto"},
-   {id:"r_s3",desc:"Restricción de acceso al piso para instalar",proyecto:"Seguros Monterrey",prob:3,imp:3,resp:"PM / Cliente",estatus:"abierto"},
-   {id:"r_s4",desc:"Partidas sin precio traban facturación",proyecto:"Seguros Monterrey",prob:4,imp:2,resp:"Comercial",estatus:"abierto"}
+   {id:"r_s1",desc:"Retraso en entrega de rodajas 75 mm (importación) — 95 mesas detenidas",proyecto:"Seguros Monterrey",prob:1,imp:5,resp:"Compras",estatus:"cerrado"},
+   {id:"r_s5",desc:"Electrificación BYRNE llega 6-sep y Villahermosa entrega 7-11 sep: 1 día de margen",proyecto:"Seguros Monterrey",prob:3,imp:5,resp:"Compras / Logística",estatus:"abierto"},
+   {id:"r_s6",desc:"Las 39 mesas de Chihuahua requieren 156 rodajas que no se han colocado (lead time de importación)",proyecto:"Seguros Monterrey",prob:4,imp:4,resp:"Compras",estatus:"abierto"},
+   {id:"r_s7",desc:"Chihuahua no aparece en el calendario de entregas que ya tiene el cliente (10 renglones)",proyecto:"Seguros Monterrey",prob:4,imp:3,resp:"PM / Comercial",estatus:"abierto"},
+   {id:"r_s8",desc:"Oaxaca Nivel 3 sin lanzar: falta cotización con modificación (179 pza)",proyecto:"Seguros Monterrey",prob:3,imp:4,resp:"Comercial (Tania)",estatus:"abierto"},
+   {id:"r_s9",desc:"Mampara FC-5439 (11 pza) sin liberar: falta parte B (repisa)",proyecto:"Seguros Monterrey",prob:3,imp:2,resp:"Producción / CEDI",estatus:"abierto"},
+   {id:"r_s3",desc:"Instalaciones del cliente no libres de obra al momento del armado (T&C: reagenda con costo)",proyecto:"Seguros Monterrey",prob:3,imp:4,resp:"PM / Cliente",estatus:"abierto"},
+   {id:"r_s2",desc:"Cambio de medidas / acabados por el cliente",proyecto:"Seguros Monterrey",prob:2,imp:3,resp:"Comercial",estatus:"abierto"},
+   {id:"r_s4",desc:"Partidas sin precio ($0) traban facturación",proyecto:"Seguros Monterrey",prob:2,imp:2,resp:"Comercial",estatus:"abierto"}
+  ],
+  concentrado:{
+   fuente:"ESTATUS_PEDIDOS_SEGUROS_MONTERREY.xlsx + Seguros_Mty_estatus.xlsx (Customer Service) · corte 27-ago-2026",
+   areas:[
+    {id:"ar1",nombre:"Oaxaca Nivel 1",pedido:"P-10113868",piezas:96,entrega:"27 sep – 2 oct",armado:"7 personas · 1 semana",estatus:"Lanzado",nota:""},
+    {id:"ar2",nombre:"Oaxaca Nivel 2",pedido:"P-10113855",piezas:115,entrega:"27 sep – 2 oct",armado:"7 personas · 1 semana",estatus:"Lanzado",nota:""},
+    {id:"ar3",nombre:"Oaxaca Nivel 3",pedido:"P-10113871",piezas:179,entrega:"27 sep – 2 oct",armado:"7 personas · 1 semana",estatus:"Sin lanzar",nota:"Completo, pendiente que Comercial comparta cotización con modificación y solicite lanzado"},
+    {id:"ar4",nombre:"Villahermosa",pedido:"P-10113920",piezas:24,entrega:"7 – 11 sep",armado:"2 personas · 1 día",estatus:"Lanzado",nota:"Primera entrega del programa. Área más pequeña: 8 renglones"},
+    {id:"ar5",nombre:"Saltillo PB",pedido:"P-10113857",piezas:34,entrega:"4 – 9 oct",armado:"7 personas · 1 semana",estatus:"Lanzado",nota:""},
+    {id:"ar6",nombre:"Saltillo PA",pedido:"P-10113918",piezas:345,entrega:"4 – 9 oct",armado:"7 personas · 1 semana",estatus:"Lanzado",nota:""},
+    {id:"ar7",nombre:"Saltillo Anexo",pedido:"P-10113856",piezas:153,entrega:"4 – 9 oct",armado:"7 personas · 1 semana",estatus:"Lanzado",nota:"153 pza en solo 2 renglones — verificar desglose"},
+    {id:"ar8",nombre:"Torreón PB",pedido:"P-10113916",piezas:329,entrega:"18 – 23 oct",armado:"7 personas · 1 semana",estatus:"Lanzado",nota:""},
+    {id:"ar9",nombre:"Torreón PA",pedido:"P-10113917",piezas:516,entrega:"18 – 23 oct",armado:"7 personas · 1 semana",estatus:"Lanzado",nota:"Pedido más grande del programa. Concentra 198 Capri y buena parte de la electrificación"},
+    {id:"ar10",nombre:"Torreón Anexo",pedido:"P-10113854",piezas:162,entrega:"18 – 23 oct",armado:"7 personas · 1 semana",estatus:"Lanzado",nota:""},
+    {id:"ar11",nombre:"Chihuahua",pedido:"P-10114340",piezas:117,entrega:"5 oct",armado:"Pendiente revisar con armadores",estatus:"Lanzado",nota:"Cot. SFE-57-916 · $808,701.19. NO aparece en el calendario de 10 renglones que tiene el cliente"}
+   ],
+   conceptos:[
+    {id:"c1",sku:"FC-6443",desc:"Silla CAPRI estructura blanca (folio)",tipo:"fab",base:284,llevamos:284,estatus:"En CEDI",nota:"6 lotes: 13, 14, 24, 25, 26 y 27-ago. Tapiz Mim turquesa, respaldo malla gris"},
+    {id:"c2",sku:"FC-5446",desc:"Silla CAPRI estructura blanca (catálogo)",tipo:"fab",base:63,llevamos:63,estatus:"En CEDI",nota:"19 – 24 ago"},
+    {id:"c3",sku:"FC-5467",desc:"Silla visita ALLEGRA 4 patas negra",tipo:"fab",base:189,llevamos:150,estatus:"En proceso",nota:"39 programadas 31-ago + 10 WIP. Retapizado en tela Mini cereza"},
+    {id:"c4",sku:"FC-5493",desc:"Mesa abatible 120 cm con freno",tipo:"fab",base:95,llevamos:95,estatus:"En CEDI",nota:"3 folios de 32+32+31, salidas 18, 19 y 20-ago. Altura cotizada 0.75 m"},
+    {id:"c5",sku:"FA-6379",desc:"Escritorio ejecutivo 150 × 60 cm",tipo:"fab",base:70,llevamos:70,estatus:"En CEDI",nota:"Desviación: 35 derechos + 35 izquierdos por posición del centro de energía"},
+    {id:"c6",sku:"FA-6378",desc:"Escritorio ejecutivo 150 × 60 una pata",tipo:"fab",base:27,llevamos:27,estatus:"En CEDI",nota:""},
+    {id:"c7",sku:"BLS642",desc:"Archivero horizontal blanco",tipo:"fab",base:62,llevamos:62,estatus:"En CEDI",nota:""},
+    {id:"c8",sku:"#BS1072",desc:"Archivero bajo cubierta de 3",tipo:"fab",base:59,llevamos:59,estatus:"En CEDI",nota:""},
+    {id:"c9",sku:"FC-6199",desc:"Puente 90 × 60 blanco estructura",tipo:"fab",base:42,llevamos:42,estatus:"En CEDI",nota:"Archivo de CS dice 42; el de pedidos dice 48 — conciliar"},
+    {id:"c10",sku:"FC-5436",desc:"Mampara de piso 106 × 150 cm iWork",tipo:"fab",base:32,llevamos:32,estatus:"En CEDI",nota:""},
+    {id:"c11",sku:"FD-5435",desc:"Remate para mamparas 106 cm",tipo:"fab",base:32,llevamos:32,estatus:"En CEDI",nota:""},
+    {id:"c12",sku:"#BS1009",desc:"Puente 90 × 60 blanco",tipo:"fab",base:22,llevamos:22,estatus:"En CEDI",nota:""},
+    {id:"c13",sku:"FD-5428",desc:"Remate para mamparas 94 cm",tipo:"fab",base:21,llevamos:20,estatus:"En proceso",nota:"1 WIP (19-ago). Archivo de pedidos dice 22 — conciliar"},
+    {id:"c14",sku:"FC-6395",desc:"Benching lineal 180 × 60 cm",tipo:"fab",base:21,llevamos:21,estatus:"En CEDI",nota:""},
+    {id:"c15",sku:"FC-5432",desc:"Poste conector para mamparas 106 cm",tipo:"fab",base:16,llevamos:16,estatus:"En CEDI",nota:""},
+    {id:"c16",sku:"FC-5454",desc:"Cojín para credenza de 120",tipo:"fab",base:16,llevamos:16,estatus:"En CEDI",nota:""},
+    {id:"c17",sku:"FC-6396",desc:"Extensión benching 180 × 120 cm",tipo:"fab",base:15,llevamos:15,estatus:"En CEDI",nota:""},
+    {id:"c18",sku:"FC-4855",desc:"Benching 180 × 120 blanco",tipo:"fab",base:13,llevamos:13,estatus:"En CEDI",nota:""},
+    {id:"c19",sku:"#BS1041",desc:"Credenza alta de 150 cm derecha",tipo:"fab",base:11,llevamos:11,estatus:"En CEDI",nota:""},
+    {id:"c20",sku:"#BS1031",desc:"Credenza alta de 150 cm izquierda",tipo:"fab",base:11,llevamos:10,estatus:"En proceso",nota:"1 WIP (18-ago)"},
+    {id:"c21",sku:"FC-5429",desc:"Poste conector para mamparas 94 cm",tipo:"fab",base:11,llevamos:11,estatus:"En CEDI",nota:"Hallazgo: salieron sin tornillería, regresaron de CEDI para re-empacar"},
+    {id:"c22",sku:"FC-5438",desc:"Mampara de piso 94 × 60 cm iWork",tipo:"fab",base:11,llevamos:11,estatus:"En CEDI",nota:""},
+    {id:"c23",sku:"FC-5439",desc:"Mampara de piso 94 × 90 cm iWork",tipo:"fab",base:11,llevamos:0,estatus:"Incompleto",nota:"Fabricada 13-ago pero FALTA PARTE B (repisa) para liberar. Abierto desde el 17-ago"},
+    {id:"c24",sku:"#BS1044",desc:"Credenza baja de 150 cm derecha",tipo:"fab",base:9,llevamos:9,estatus:"En CEDI",nota:""},
+    {id:"c25",sku:"FC-5443",desc:"Sillón recto tela especial base",tipo:"fab",base:8,llevamos:8,estatus:"En CEDI",nota:""},
+    {id:"c26",sku:"#BS1034",desc:"Credenza baja de 150 cm izquierda",tipo:"fab",base:7,llevamos:7,estatus:"En CEDI",nota:""},
+    {id:"c27",sku:"FC-5430",desc:"Mesa redonda 110 cm blanca",tipo:"fab",base:7,llevamos:7,estatus:"En CEDI",nota:""},
+    {id:"c28",sku:"FC-6398",desc:"Extensión benching lineal 180 × 60 cm",tipo:"fab",base:7,llevamos:7,estatus:"En CEDI",nota:"No confundir con FA-6379: en campo se citó '6398' para los escritorios"},
+    {id:"c29",sku:"FC-6397",desc:"Escritorio ejecutivo 180 × 60 cm",tipo:"fab",base:6,llevamos:6,estatus:"En CEDI",nota:""},
+    {id:"c30",sku:"FC-6425",desc:"Mesa redonda 110 cm blanca",tipo:"fab",base:5,llevamos:5,estatus:"En CEDI",nota:""},
+    {id:"c31",sku:"FC-6422",desc:"Escritorio ejecutivo 90 × 60 blanco",tipo:"fab",base:4,llevamos:4,estatus:"En CEDI",nota:""},
+    {id:"c32",sku:"FC-6424",desc:"Mesa central blanca 80 cm",tipo:"fab",base:4,llevamos:4,estatus:"En CEDI",nota:""},
+    {id:"c33",sku:"FC-6426",desc:"Extensión benching lineal 90 × 60 cm",tipo:"fab",base:2,llevamos:2,estatus:"En CEDI",nota:""},
+    {id:"c34",sku:"FA-6401",desc:"Mesa conferencia ANZIO 120 × 240 cm",tipo:"fab",base:1,llevamos:1,estatus:"En CEDI",nota:""},
+    {id:"c35",sku:"FA-6435",desc:"Mesa de juntas gerencial blanca",tipo:"fab",base:1,llevamos:1,estatus:"En CEDI",nota:""},
+    {id:"c36",sku:"FB-6473",desc:"Mesa de juntas redonda 150 × 75",tipo:"fab",base:1,llevamos:1,estatus:"En CEDI",nota:""},
+    {id:"c37",sku:"BLS105",desc:"Archivero especial 105",tipo:"fab",base:1,llevamos:1,estatus:"En CEDI",nota:""},
+    {id:"c38",sku:"#BS1003",desc:"Escritorio ejecutivo 120 × 60",tipo:"fab",base:1,llevamos:1,estatus:"En CEDI",nota:""},
+    {id:"c40",sku:"BTS-SS202",desc:"Centro energía tapa deslizable alum 28 × 10 cm",tipo:"com",base:217,llevamos:217,estatus:"Resuelto",nota:"Su posición originó la desviación izq/der de los 70 escritorios FA-6379"},
+    {id:"c41",sku:"CO-OH757MC-RST",desc:"Silla visitante CIAO, asiento Mini cereza, respaldo sin tapizar",tipo:"com",base:152,llevamos:152,estatus:"Resuelto",nota:""},
+    {id:"c42",sku:"CO-OH757MC",desc:"Silla visitante CIAO completa, Mini cereza, estructura negra",tipo:"com",base:12,llevamos:12,estatus:"Resuelto",nota:"La Ciao completa está partida en 2 claves (12 + 19 = 31) — unificar"},
+    {id:"c43",sku:"57-COOH757MC",desc:"Silla visitante CIAO completa (segunda clave)",tipo:"com",base:19,llevamos:19,estatus:"Resuelto",nota:"Misma silla que CO-OH757MC bajo otra clave"},
+    {id:"c44",sku:"CO-AL454GR",desc:"Sillón de una plaza LUTECIA, tapiz gris, patas cromadas",tipo:"com",base:20,llevamos:20,estatus:"Resuelto",nota:""},
+    {id:"c45",sku:"YV-102",desc:"Grommet redondo centro de energía 10 cm",tipo:"com",base:7,llevamos:7,estatus:"Resuelto",nota:""},
+    {id:"c46",sku:"CO-BM466GF",desc:"Sofá BM 410 de 1 plaza, tapiz gris fuerte, incluye paleta",tipo:"com",base:1,llevamos:1,estatus:"Resuelto",nota:""},
+    {id:"c47",sku:"CBY-06",desc:"BYRNE · Toma de corriente 15A",tipo:"com",base:128,llevamos:0,estatus:"Comprometido",nota:"Llegada confirmada 6-sep-2026"},
+    {id:"c48",sku:"SBY-02",desc:"BYRNE · Soporte de montaje 1/2\"",tipo:"com",base:88,llevamos:0,estatus:"Comprometido",nota:"Llegada confirmada 6-sep-2026"},
+    {id:"c49",sku:"BBY-04",desc:"BYRNE · Bloque de fase 30\" fase 3",tipo:"com",base:44,llevamos:0,estatus:"Comprometido",nota:"Llegada confirmada 6-sep-2026"},
+    {id:"c50",sku:"EBY-02",desc:"BYRNE · Entrada líquida 72\"",tipo:"com",base:29,llevamos:0,estatus:"Comprometido",nota:"Llegada confirmada 6-sep-2026"},
+    {id:"c51",sku:"CBY-07",desc:"BYRNE · Toma de corriente 15A (variante)",tipo:"com",base:16,llevamos:0,estatus:"Comprometido",nota:"Llegada confirmada 6-sep-2026"},
+    {id:"c52",sku:"PBY-17",desc:"BYRNE · 60\" F/F/M vía de paso fase 3",tipo:"com",base:11,llevamos:0,estatus:"Comprometido",nota:"Llegada confirmada 6-sep-2026"},
+    {id:"c53",sku:"PBY-21",desc:"BYRNE · 60\" F/F vía de paso fase 3",tipo:"com",base:4,llevamos:0,estatus:"Comprometido",nota:"Llegada confirmada 6-sep-2026"},
+    {id:"c60",sku:"FC-5467 (CHI)",desc:"Silla ALLEGRA — Chihuahua P-10114340",tipo:"fab",base:78,llevamos:0,estatus:"No programado",nota:"Cot. SFE-57-916. Misma clave y misma tela cereza que las 189 del programa"},
+    {id:"c61",sku:"FC-5493 (CHI)",desc:"Mesa abatible 120 cm — Chihuahua P-10114340",tipo:"fab",base:39,llevamos:0,estatus:"No programado",nota:"Requiere 156 rodajas (4 c/u) que NO se han colocado. Altura cotizada 0.75 m"}
+   ]
+  },
+  informes:[
+   {id:"i1",fecha:"2026-07-30",tipo:"Informe a dirección",avance:30,titulo:"Avance ~30% · captura y folios al 100%, programación al 42%",
+    contenido:"Captura de pedidos por CS 100%. Liberación de folios ING 100%. Programación al 42% del valor del proyecto, ventana 03–14 ago por PCP.",
+    riesgos:"Sillas Capri, Allegra y mamparas pendientes de programar por falta de tela (llega 07-ago). Crítico: 95 mesas plegables detenidas por desabasto de rodajas.",
+    acciones:"Revisar tiempos de entrega con Tania y arrancar Oaxaca y Villahermosa con la tela existente. Alejandro contactó proveedor nacional de rodajas (2 opciones, 190 c/freno + 190 s/freno). OC de rodajas chinas emitida: fin de producción 13-ago, llegada a México ~18-ago. Hallazgo: los escritorios necesitan cubierta izq y der por la posición del centro de energía y solo se solicitó de un lado."},
+   {id:"i2",fecha:"2026-08-03",tipo:"Resumen del día",avance:null,titulo:"Prototipo de mamparas admin Jr y desviación de 35 der / 35 izq",
+    contenido:"Se prototiparon mamparas para el área de administrador Jr. Se hizo desviación para fabricar 35 escritorios derechos y 35 izquierdos. Alex encontró opción de rodajas para poder programar las mesas plegables. En espera de confirmación de fechas de entrega.",
+    riesgos:"Llegada de telas en tiempo. Tiempo de entrega de rodajas.",
+    acciones:"Reunión con el cliente el miércoles para revisión de fechas."},
+   {id:"i3",fecha:"2026-08-04",tipo:"Resumen del día",avance:null,titulo:"Validación de ensamble de mamparas y del FA-6379 derecho",
+    contenido:"Validado el ensamble de mamparas para la configuración administradores Jr. Validado el mueble derecho: ensamble y colocación del centro de energía BTS-SS202.",
+    riesgos:"",acciones:"Pendiente validar el lado izquierdo."},
+   {id:"i4",fecha:"2026-08-05",tipo:"Resumen del día",avance:null,titulo:"Reunión de equipo sobre la magnitud del proyecto — 6 acuerdos",
+    contenido:"Etiquetado especial para folios izq/der por variantes de sucursales. Imprimir hojas de ubicación por sucursal. Definir criterios de calidad y manipulación de mamparas por la tela blanca. Se entregó el avance de lo programado, solo faltan las mesas plegables. Análisis de tiempo en folio de silla CAPRI por colocación de espuma y retapizado de 284 sillas. Definir área especial en CEDI para todo el proyecto con identificación y logística de envíos.",
+    riesgos:"Llegada de rodajas. Validar tiempos de silla CAPRI.",acciones:"La tela sale de la lista de riesgos."},
+   {id:"i5",fecha:"2026-08-06",tipo:"Resumen del día",avance:null,titulo:"35 escritorios derechos concluidos · OC BYRNE con entrega 7-sep",
+    contenido:"FA-6379: concluidos los 35 escritorios derechos; se etiquetan en CEDI los izquierdos para concluir. Tania tuvo reunión con el cliente para definir fechas de entrega. La OC de electrificación BYRNE ya se emitió con entrega el 7 de septiembre. Está por cerrarse un nuevo pedido para Chihuahua por 1M. Se pidió la silla CAPRI para pruebas de espuma y tapizado.",
+    riesgos:"Rodajas. Tiempos de silla CAPRI. BYRNE con entrega posterior a la fecha ancla vigente en ese momento (31-ago).",acciones:""},
+   {id:"i6",fecha:"2026-08-07",tipo:"Resumen del día",avance:null,titulo:"Llegó la tela · propuesta de liberar con rodaja de 60 mm",
+    contenido:"Quedó etiquetado todo el material en CEDI para los escritorios izquierdos, con lo que cierra el FA-6379 completo (70 pza). Tania envió las fechas de entrega a revisión con el cliente. Llegó la tela necesaria para el proyecto, en la fecha comprometida.",
+    riesgos:"Crítico las rodajas: las muestras que pidió Alejandro no llegan hasta el martes.",
+    acciones:"Se plantea revisar la posibilidad de liberar el proyecto con rodaja de 60 mm. Nota del PM: el proyecto está cotizado a 0.75 m de altura; bajar 15 mm sale de especificación."},
+   {id:"i7",fecha:"2026-08-10",tipo:"Resumen del día",avance:null,titulo:"95 mesas plegables programadas con desviación",
+    contenido:"Quedaron programadas las 95 mesas plegables del pedido para el 17 de agosto. Se hizo desviación para poder utilizar las rodajas. Tania envió los planos del siguiente pedido de Chihuahua para analizarlo.",
+    riesgos:"",acciones:"Segunda desviación del proyecto, ambas por datos de origen que no cuadraban, no por cambio del cliente."},
+   {id:"i8",fecha:"2026-08-11",tipo:"Resumen del día",avance:null,titulo:"Folios de mesa se mueven al 18, 19 y 20 · planos de Chihuahua por color, no por SKU",
+    contenido:"Folios de mesa plegable movidos al 18, 19 y 20 de agosto (32 + 32 + 31 = 95). De los planos de Chihuahua se validó con Tania la solicitud de configuraciones porque solo se entregó por colores y no por SKU. Se validó con producción y procesos el retapizado de la silla CAPRI; había dudas del acabado. Producción corrió muestras de folios de mamparas y se resolvieron dudas sobre el MDF de 12 mm.",
+    riesgos:"Programar el 18 el mismo día que aterriza el embarque no deja margen de aduana.",acciones:""},
+   {id:"i9",fecha:"2026-08-12",tipo:"Resumen del día",avance:null,titulo:"Mamparas y mesas validadas · CAPRI liberado a producción",
+    contenido:"Validado el ensamble de folio de mamparas, con ajuste de parámetros de MDF y definición de tolerancias. Validado el ensamble y la funcionalidad del folio de mesas plegables. Pruebas de retapizado de CAPRI con buenos comentarios de planta y planificación: arranca producción. Revisados con Tania los planos de Chihuahua, en acuerdo los folios por subir.",
+    riesgos:"",acciones:"Nota del PM: 'buenos comentarios' no es criterio de aceptación. Con 284 sillas por correr, dejar silla patrón física aprobada."},
+   {id:"i10",fecha:"2026-08-13",tipo:"Resumen del día",avance:null,titulo:"Arranca retapizado CAPRI · hallazgo de postes sin tornillería",
+    contenido:"Inició el programa de retapizado de sillas Capri, cumpliendo el programa del día (50 sillas). Los folios de mamparas se iniciaron al terminar el turno pero no se liberaron hasta validar tornillería. Llegada de silla de visita Allegra: 189 sillas revisadas con Nathalia y Mauricio, llegan el lunes 17.",
+    riesgos:"",acciones:"Hallazgo: los postes del folio FC-5429 iban sin tornillería, se regresan del CEDI para re-empacar."},
+   {id:"i11",fecha:"2026-08-17",tipo:"Resumen del día",avance:null,titulo:"Allegra en planta · fechas de entrega se sostienen · mampara sin repisa",
+    contenido:"Sigue en fabricación el retapizado de CAPRI. Folios de mamparas y mesas plegables en proceso. Reunión con Tania: las fechas de entrega se quedaron con el plan que ya se tenía. Las sillas Allegra llegaron y se revisó con Pancho para planear el día de producción.",
+    riesgos:"",acciones:"Hallazgo: el folio de mamparas se envió sin la repisa; se traen del CEDI para reemplazar. Tercer caso de material incompleto liberado a CEDI en 5 días."},
+   {id:"i12",fecha:"2026-08-18",tipo:"Resumen del día",avance:null,titulo:"32 de 95 mesas · CAPRI 100 listas · empaque conjunto mampara + repisa",
+    contenido:"Salieron 32 mesas plegables de las 95 programadas. Retapizado y empaque de CAPRI: 100 listas. Mamparas empacadas, las retocadas y las de 60 cm. Se hizo el empaque para que la mampara y la repisa vayan en la misma caja y no haya temas en la distribución. Allegra descargada y validada por calidad, 25 pza; arranca retapizado en color cereza.",
+    riesgos:"",acciones:"El empaque conjunto es contramedida a la causa raíz, no al síntoma. Registrado como efectivo."},
+   {id:"i13",fecha:"2026-08-19",tipo:"Resumen del día",avance:null,titulo:"64 de 95 mesas · calendario nuevo de entregas · 2 órdenes de Chihuahua",
+    contenido:"Pruebas del retapizado de Allegra y arranque de producción. Se compartió el calendario nuevo de entregas y se otorgaron nuevas fechas. Continuó el reempaque de mampara con repisa. Salieron las otras 32 mesas plegables: 64 liberadas. Reunión con Tania, compartió las 2 nuevas órdenes para Chihuahua.",
+    riesgos:"",acciones:"El calendario nuevo mueve el cierre del programa del 31-ago al 23-oct. Tercer cambio de fecha ancla del proyecto."},
+   {id:"i14",fecha:"2026-08-24",tipo:"Resumen del día",avance:null,titulo:"Mesas abatibles al 100% · Allegra 100 de 189",
+    contenido:"Se terminó el total de mesas abatibles: 95 de 95, 100%. Allegra al 52.9%: 100 sillas de 189 programadas.",
+    riesgos:"",acciones:"Cierra el frente de rodajas que dominó tres semanas de bitácora."},
+   {id:"i15",fecha:"2026-08-25",tipo:"Resumen del día",avance:null,titulo:"Allegra 150 de 189 · mamparas al 100%",
+    contenido:"Avance de silla Allegra 73%: 150 sillas de 189 programadas. Avance de mamparas al 100%.",
+    riesgos:"",acciones:""},
+   {id:"i16",fecha:"2026-08-26",tipo:"Resumen del día",avance:null,titulo:"Programa CAPRI a 36 de 50 por falta de sillas · propuesta 691 → 692",
+    contenido:"Entró la OC de sillas Allegra y mesas de capacitación para Chihuahua. Retapizado CAPRI: se programaron 50 y se elaboraron 36 por falta de sillas.",
+    riesgos:"Faltan 98 sillas del programa; revisado con Mauricio, llegan en 10 días un contenedor con 316 sillas.",
+    acciones:"Se evalúa convertir la 691 en 692 quitándole la cabecera para no parar la producción (revisado con Pancho, Mauricio y Brenda). Hay 153 disponibles con cabecera S691G."},
+   {id:"i17",fecha:"2026-08-27",tipo:"Resumen del día",avance:null,titulo:"Ajuste en OP: se retapiza la 691 en lugar de la 692 · 50 + 18",
+    contenido:"Se hizo el ajuste en la OP para retapizar la silla CAPRI 691 en lugar de la 692 y no detener la producción, terminando satisfactoriamente las 50 sillas del día y avanzando con 18 del día siguiente. Folio del proyecto confirmado por etiqueta: FC-6443, estructura blanca, respaldo malla gris, tapiz Mim turquesa.",
+    riesgos:"",acciones:"Tercera sustitución del proyecto sin verificación documentada contra el modelo cotizado. Pendiente confirmar si el cliente cotizó S691G o S692G."},
+   {id:"i18",fecha:"2026-08-27",tipo:"Corte de estatus",avance:null,titulo:"Corte de Customer Service: lo fabricado cierra, lo comercializado queda comprometido",
+    contenido:"Corte al 27-ago con el archivo de estatus de CS. De 40 SKU con fecha de producción, 37 están en CEDI. CAPRI cerró completo (284 + 63). Mesas abatibles 95 de 95. Escritorios FA-6379 70 de 70. Mamparas al 100%. Allegra 150 de 189.",
+    riesgos:"Abiertos: mampara FC-5439 sin parte B (repisa), 2 piezas en WIP, 39 Allegra programadas 31-ago, electrificación BYRNE con llegada 6-sep contra Villahermosa 7-11 sep, y las 156 rodajas de Chihuahua sin colocar.",
+    acciones:"Producto comercializado (BYRNE, sillas Ciao, centros de energía) resuelto por Compras. BYRNE con llegada confirmada 6-sep."}
   ],
   actividades:[
-   act("Planeación","Confirmar alcance y OC (10 pedidos capturados)","Comercial","2026-07-01","2026-07-05","Terminado"),
-   act("Planeación","Validar alcance vs explosivo de materiales","Ingeniería","2026-07-24","2026-07-28","En proceso"),
+   act("Planeación","Confirmar alcance y OC (11 pedidos capturados)","Comercial","2026-07-01","2026-07-05","Terminado"),
+   act("Planeación","Validar alcance vs explosivo de materiales","Ingeniería","2026-07-24","2026-07-28","Terminado","Alta"),
+   act("Planeación","Definir alcance de Chihuahua (sucursal 11 vs proyecto aparte)","Project Manager","2026-08-06","2026-08-20","Terminado"),
    act("Diseño","Liberar folios especiales (perf. BTS-SS202)","Ingeniería","2026-07-20","2026-07-27","Terminado"),
-   act("Diseño","Re-cortar 34 cubiertas FC-6379 (grommet recorrido)","Taller","2026-07-29","2026-07-31","En proceso"),
-   act("Cliente","Confirmar anticipos y acabados por sucursal","Comercial","2026-07-24","2026-08-02","En proceso"),
-   act("Compras","Rodaja 75mm importación (380 pza) — ETA 17-18 ago","Compras","2026-07-15","2026-08-18","Bloqueado"),
-   act("Compras","Tela especial 408 m — arribo 29-jul","Compras","2026-07-20","2026-07-29","En proceso"),
-   act("Compras","Asignar precios pendientes ($0): Ciao, electrificación","Comercial","2026-07-28","2026-07-31","Bloqueado"),
-   act("Producción","Fabricar escritorios FA-6379 (70/70 programados)","Producción","2026-07-30","2026-08-17","En proceso"),
-   act("Producción","Fabricar mesas abatibles (95) — sub-lote post-rodaja","PCP","2026-08-19","2026-08-26","No iniciado"),
-   act("Calidad","Inspección de producto terminado","Calidad","2026-08-24","2026-08-27","No iniciado"),
-   act("Logística","Programar embarque a las 4 ciudades","Logística","2026-08-17","2026-08-19","No iniciado"),
-   act("Instalación","Armado e instalación en sitio","Taller","2026-08-21","2026-08-30","No iniciado"),
-   act("Cierre","Entrega, sign-off del cliente y garantías","Project Manager","2026-08-31","2026-09-10","No iniciado")
+   act("Diseño","Desviación cubiertas izq/der FA-6379 (35 + 35)","Ingeniería","2026-08-03","2026-08-07","Terminado","Alta"),
+   act("Diseño","Validar primeras piezas: mampara, mesa plegable y CAPRI","Innovación","2026-08-12","2026-08-14","Terminado"),
+   act("Diseño","Ajustar parámetros de MDF 12 mm y definir tolerancias","Ingeniería","2026-08-11","2026-08-12","Terminado"),
+   act("Diseño","Definir cómo ingresar cubiertas izq/der de Chihuahua","Ingeniería","2026-08-11","2026-09-05","En proceso","Alta"),
+   act("Cliente","Compartir y confirmar calendario de entregas","Comercial","2026-08-18","2026-08-19","Terminado"),
+   act("Cliente","Oaxaca N3: cotización con modificación y solicitar lanzado","Comercial","2026-08-20","2026-09-05","Bloqueado","Alta"),
+   act("Cliente","Agregar Chihuahua al calendario de entregas del cliente","Project Manager","2026-08-28","2026-09-05","No iniciado","Alta"),
+   act("Compras","Rodaja 75 mm importación (380 pza)","Compras","2026-07-15","2026-08-18","Terminado","Alta"),
+   act("Compras","Tela especial 408 m","Compras","2026-07-20","2026-08-07","Terminado"),
+   act("Compras","Electrificación BYRNE (320 pza) — llegada 6-sep","Compras","2026-08-06","2026-09-06","En proceso","Alta"),
+   act("Compras","Contenedor de 316 sillas CAPRI base","Compras","2026-08-26","2026-09-05","En proceso"),
+   act("Compras","Colocar 156 rodajas para las 39 mesas de Chihuahua","Compras","2026-08-28","2026-09-10","No iniciado","Alta"),
+   act("Producción","Escritorios FA-6379 (70/70)","Producción","2026-07-30","2026-08-07","Terminado"),
+   act("Producción","Mesas abatibles FC-5493 (95/95) en 3 folios","PCP","2026-08-17","2026-08-20","Terminado"),
+   act("Producción","Mamparas iWork y remates (100%)","Producción","2026-08-06","2026-08-25","Terminado"),
+   act("Producción","Retapizado CAPRI FC-6443 (284/284)","Producción","2026-08-13","2026-08-27","Terminado"),
+   act("Producción","Retapizado ALLEGRA FC-5467 (150/189)","Producción","2026-08-19","2026-08-31","En proceso","Alta"),
+   act("Producción","Fabricar Chihuahua P-10114340 (117 pza)","PCP","2026-09-08","2026-09-25","No iniciado","Alta"),
+   act("Calidad","Reemplazar parte B (repisa) de FC-5439 — 11 pza","Calidad","2026-08-17","2026-09-05","En proceso","Alta"),
+   act("Calidad","Checklist de completitud antes de liberar a CEDI","Calidad","2026-08-18","2026-09-05","En proceso","Alta"),
+   act("Calidad","Verificar modelo cotizado S691G vs S692G","Calidad","2026-08-27","2026-09-05","En proceso","Alta"),
+   act("Logística","Área dedicada en CEDI, etiquetado izq/der y hojas de ubicación","Logística","2026-08-05","2026-08-18","Terminado"),
+   act("Logística","Embarque Villahermosa","Logística","2026-09-02","2026-09-07","Listo para comenzar","Alta"),
+   act("Logística","Embarque Oaxaca (3 niveles)","Logística","2026-09-22","2026-09-27","No iniciado"),
+   act("Logística","Embarque Chihuahua","Logística","2026-09-30","2026-10-05","No iniciado"),
+   act("Logística","Embarque Saltillo (PB, PA, Anexo)","Logística","2026-09-29","2026-10-04","No iniciado"),
+   act("Logística","Embarque Torreón (PB, PA, Anexo)","Logística","2026-10-13","2026-10-18","No iniciado"),
+   act("Instalación","Armado Villahermosa (2 personas · 1 día)","Instalaciones","2026-09-07","2026-09-11","No iniciado"),
+   act("Instalación","Armado Oaxaca (7 personas · 1 semana)","Instalaciones","2026-09-27","2026-10-02","No iniciado"),
+   act("Instalación","Armado Chihuahua (pendiente definir con armadores)","Instalaciones","2026-10-05","2026-10-09","No iniciado"),
+   act("Instalación","Armado Saltillo (7 personas · 1 semana)","Instalaciones","2026-10-04","2026-10-09","No iniciado"),
+   act("Instalación","Armado Torreón (7 personas · 1 semana)","Instalaciones","2026-10-18","2026-10-23","No iniciado"),
+   act("Cierre","Expediente de hallazgos y lecciones aprendidas","Project Manager","2026-08-28","2026-10-30","En proceso","Alta"),
+   act("Cierre","Sign-off del cliente y garantías","Project Manager","2026-10-23","2026-11-06","No iniciado")
   ]},
  {id:"timken",nombre:"TIMKEN",cliente:"TIMKEN · Planta / oficinas",valor:0,inauguracion:"2026-08-01",
+  concentrado:{fuente:"",areas:[],conceptos:[]},informes:[],
   actividades:[
    act("Producción","Fabricación de mobiliario","Producción","2026-05-05","2026-07-16","Terminado"),
    act("Logística","Embarque a sitio","Logística","2026-07-16","2026-07-18","Terminado"),
@@ -223,31 +387,78 @@ const SEED={proyectos:[
    act("Cierre","Sign-off del cliente","Project Manager","2026-07-30","2026-08-01","No iniciado")
   ]},
  {id:"hyatt",nombre:"Hyatt",cliente:"Hyatt · Hotelería corporativa",valor:0,inauguracion:"2027-02-15",
-  riesgos:[{id:"r_h1",desc:"Concurso aún no ganado — alcance sin cerrar",proyecto:"Hyatt",prob:3,imp:4,resp:"René / Comercial",estatus:"abierto"}],
+  concentrado:{fuente:"",areas:[],conceptos:[]},informes:[],
+  riesgos:[
+   {id:"r_h1",desc:"Concurso aún no ganado — alcance sin cerrar",proyecto:"Hyatt",prob:3,imp:4,resp:"René / Comercial",estatus:"abierto"},
+   {id:"r_h2",desc:"Muestras: para el cliente son su carta de presentación y el tema no se aclaró",proyecto:"Hyatt",prob:3,imp:3,resp:"Comercial (Tony)",estatus:"abierto"}
+  ],
   actividades:[
    act("Planeación","Decisión go/no-go del concurso","Project Manager","2026-07-28","2026-08-01","En proceso"),
+   act("Cliente","Visita a showroom acordada con el cliente","Comercial","2026-08-06","2026-09-15","No iniciado"),
    act("Diseño","Propuesta y cotización","Comercial","2026-08-01","2026-09-15","No iniciado")
   ]}
 ],
 hallazgos:[
-  {id:"h1",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Rodajas subestimadas 6×",detalle:"CRM registró 64 pza; el explosivo pide 380 (190/190) para 95 mesas.",fam:"A",resp:"Costos / CRM",recurrente:true,impacto:"alto",estatus:"corregido"},
-  {id:"h2",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Tela especial subestimada 3.5×",detalle:"Planeado 117 m; explosivo real 408 m.",fam:"A",resp:"Costos / CRM",recurrente:true,impacto:"alto",estatus:"en curso"},
-  {id:"h3",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Mesa de 150 cm omitida en cotización",detalle:"Partida no incluida; detectada en ejecución.",fam:"A",resp:"Comercial (Tania)",recurrente:true,impacto:"medio",estatus:"en curso"},
-  {id:"h4",fecha:"2026-07-24",proyecto:"Seguros Monterrey",titulo:"Cotizaciones vencidas al 31-jul",detalle:"Torreón PB/PA y Villahermosa con vigencia cumplida.",fam:"A",resp:"Comercial",recurrente:true,impacto:"medio",estatus:"resuelto"},
-  {id:"h5",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"ETA de rodaja de importación sin registrar",detalle:"Compra a DZT, arribo 17-18 ago — vive en chat, no en sistema.",fam:"B",resp:"Compras",recurrente:true,impacto:"alto",estatus:"abierto"},
-  {id:"h6",fecha:"2026-07-27",proyecto:"Seguros Monterrey",titulo:"PCP programó mesas sin la rodaja",detalle:"Fabricación 14-18 ago; rodaja llega 17-18 ago. Ventana no cierra.",fam:"B",resp:"PCP / Compras",recurrente:true,impacto:"alto",estatus:"abierto"},
-  {id:"h7",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Clave de material errónea (70 vs 75 mm)",detalle:"Rodaja registrada 70 mm; real 75 mm.",fam:"C",resp:"Ingeniería / Costos",recurrente:true,impacto:"medio",estatus:"por corregir"},
-  {id:"h8",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Fecha ancla errónea (45 días)",detalle:"Inauguración registrada 15-oct; real 31-ago.",fam:"C",resp:"PM / Comercial",recurrente:false,impacto:"alto",estatus:"corregido"},
-  {id:"h9",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Retrabajo FC-6379: grommet al borde",detalle:"34 cubiertas cortadas con grommet al borde (tapa se salía); se reaprovechan como puentes FC-6199 y se re-cortan 34 nuevas.",fam:"D",resp:"Ingeniería / Innovación",recurrente:false,impacto:"medio",estatus:"en curso"},
-  {id:"h10",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Torreón PA: cotización mal capturada",detalle:"Clave BTS-303→BTS-SS202, folio 5441→FC-6397, monto $3.04M→$4.26M.",fam:"A",resp:"Comercial / Costos",recurrente:true,impacto:"alto",estatus:"en curso"},
-  {id:"h11",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Subestimación sistémica del valor",detalle:"Todas las sucursales bajo la cotización vieja; programa real ~$15.18M vs $11.1M.",fam:"A",resp:"Comercial / Costos",recurrente:true,impacto:"alto",estatus:"en curso"},
-  {id:"h12",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Partidas sin precio ($0) en pedidos",detalle:"7 de 10 pedidos con Ciao/electrificación en $0; traba facturación.",fam:"A",resp:"Comercial",recurrente:true,impacto:"medio",estatus:"abierto"}
+  {id:"h1",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Rodajas subestimadas 6×",detalle:"CRM registró 64 pza; el explosivo pide 380 (190 c/freno + 190 s/freno) para 95 mesas.",fam:"A",resp:"Costos / CRM",recurrente:true,impacto:"alto",estatus:"corregido",
+   deteccion:"Cruce del BOM del CRM contra el conteo real de mesas × 4 rodajas.",accion:"Se corrigió a 380 pza, se emitió OC de importación y en paralelo Alejandro coteja proveedor nacional.",leccion:"El explosivo del CRM no valida consumibles contra el conteo físico de partidas."},
+  {id:"h2",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Tela especial subestimada 3.5×",detalle:"Planeado 117 m (Office Mini 79 + Crep 38); explosivo real 408 m.",fam:"A",resp:"Costos / CRM",recurrente:true,impacto:"alto",estatus:"resuelto",
+   deteccion:"Recálculo del consumo por partida al programar Capri, Allegra y mamparas.",accion:"Se recompró al volumen real; arribo el 07-ago como se comprometió.",leccion:"Tercer insumo del mismo proyecto con base de cálculo corta. El patrón es de método, no de compras."},
+  {id:"h3",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Mesa de 150 cm omitida en cotización",detalle:"Partida no incluida; detectada en ejecución.",fam:"A",resp:"Comercial",recurrente:true,impacto:"medio",estatus:"resuelto",
+   deteccion:"Comparación de la cotización contra el levantamiento por área.",accion:"Se integró la partida al alcance.",leccion:"El intake debe cerrar contra levantamiento, no contra la cotización."},
+  {id:"h4",fecha:"2026-07-24",proyecto:"Seguros Monterrey",titulo:"Cotizaciones vencidas al 31-jul",detalle:"Torreón PB/PA y Villahermosa con vigencia cumplida. Se repitió en Chihuahua: carátula dice 28-ago pero los T&C dan 15 días desde el 6-ago.",fam:"A",resp:"Comercial",recurrente:true,impacto:"medio",estatus:"resuelto",
+   deteccion:"Revisión de vigencias al preparar el arranque.",accion:"Recotización a folios 886/887; Villahermosa 889 tomada como vigente.",leccion:"La vigencia de la carátula y la de los T&C no siempre coinciden. Validar ambas."},
+  {id:"h5",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"ETA de rodaja de importación sin registrar",detalle:"Compra a proveedor asiático, arribo 17-18 ago — el dato vivía en el chat, no en el sistema.",fam:"B",resp:"Compras",recurrente:true,impacto:"alto",estatus:"resuelto",
+   deteccion:"Al buscar la fecha para programar PCP no existía en ningún sistema.",accion:"Se registró la ETA y se programó fabricación contra ella.",leccion:"Toda ETA de importación entra al plan al colocar la PO. Es la contramedida de la Familia B."},
+  {id:"h6",fecha:"2026-07-27",proyecto:"Seguros Monterrey",titulo:"PCP programó mesas sin tener la rodaja",detalle:"Fabricación 14-18 ago con rodaja llegando 17-18 ago: la ventana no cerraba.",fam:"B",resp:"PCP / Compras",recurrente:true,impacto:"alto",estatus:"resuelto",
+   deteccion:"Cruce de la ventana de PCP contra la ETA de Compras.",accion:"Se reprogramó a 3 folios (32+32+31) los días 18, 19 y 20 de ago, arrancando el día del arribo. Salieron completas.",leccion:"Funcionó, pero sin margen de aduana. La regla debe pedir holgura, no coincidencia."},
+  {id:"h7",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Clave de material errónea (70 vs 75 mm)",detalle:"Rodaja registrada 70 mm; la real es 75 mm.",fam:"C",resp:"Ingeniería / Costos",recurrente:true,impacto:"medio",estatus:"corregido",
+   deteccion:"Validación de la clave contra ficha técnica al colocar la OC.",accion:"Corregida a 75 mm antes de comprar.",leccion:"Un error de clave en un componente de importación se paga en semanas, no en pesos."},
+  {id:"h8",fecha:"2026-08-19",proyecto:"Seguros Monterrey",titulo:"Fecha ancla movida por tercera vez",detalle:"15-oct → 31-ago → cierre real 23-oct según el calendario compartido con el cliente el 18-ago.",fam:"C",resp:"PM / Comercial",recurrente:true,impacto:"alto",estatus:"corregido",
+   deteccion:"Lectura del calendario de entregas por sucursal que el cliente ya tenía.",accion:"Se reancló el programa al 23-oct y se escalonaron las 11 sucursales.",leccion:"Tres anclas en un proyecto significa que la fecha se fijó sin base documental. Debe salir de un calendario firmado, no de una junta."},
+  {id:"h9",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Retrabajo FC-6379: grommet al borde",detalle:"34 cubiertas cortadas con grommet al borde (la tapa se salía); se reaprovechan como puentes FC-6199 y se re-cortan 34 nuevas.",fam:"D",resp:"Ingeniería / Innovación",recurrente:false,impacto:"medio",estatus:"resuelto",
+   deteccion:"Prueba de colocación de la tapa en la primera pieza.",accion:"Reaprovechamiento como puentes y re-corte; sin merma total.",leccion:"Validar el punto crítico funcional antes de liberar a corte evita 34 piezas de merma."},
+  {id:"h10",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Torreón PA: cotización mal capturada",detalle:"Clave BTS-303 → BTS-SS202, folio 5441 → FC-6397, monto $3.04M → $4.26M.",fam:"A",resp:"Comercial / Costos",recurrente:true,impacto:"alto",estatus:"resuelto",
+   deteccion:"Revisión partida por partida del pedido más grande del programa.",accion:"Recaptura de claves y monto.",leccion:"El pedido de mayor valor merece doble captura, no la misma que uno de 24 piezas."},
+  {id:"h11",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Subestimación sistémica del valor del programa",detalle:"Todas las sucursales bajo la cotización vieja: programa real ~$15.18M vs $11.1M. Con Chihuahua ($808,701) el alcance sube a ~$15.99M.",fam:"A",resp:"Comercial / Costos",recurrente:true,impacto:"alto",estatus:"resuelto",
+   deteccion:"Suma de cotizaciones vigentes contra el valor registrado.",accion:"Se actualizó el valor del programa y se fijó como base del avance.",leccion:"Sin base de valor fija, cualquier porcentaje de avance es decorativo."},
+  {id:"h12",fecha:"2026-07-28",proyecto:"Seguros Monterrey",titulo:"Partidas sin precio ($0) en pedidos",detalle:"7 de 10 pedidos con Ciao y electrificación en $0; traba facturación.",fam:"A",resp:"Comercial",recurrente:true,impacto:"medio",estatus:"en curso",
+   deteccion:"Revisión de los pedidos capturados contra las cotizaciones.",accion:"Asignación de precios en curso.",leccion:"Las mismas partidas sin precio son las de producto comercializado. Coincide con las que tampoco tenían fecha."},
+  {id:"h13",fecha:"2026-07-30",proyecto:"Seguros Monterrey",titulo:"Escritorios requieren cubierta izq Y der por el centro de energía",detalle:"Por la posición del centro de energía BTS-SS202 los escritorios necesitan cubierta de los dos lados; solo se solicitó de un lado.",fam:"A",resp:"Ingeniería / Comercial",recurrente:false,impacto:"alto",estatus:"resuelto",
+   deteccion:"Análisis de la configuración física en planta contra lo solicitado.",accion:"Desviación para fabricar 35 derechos + 35 izquierdos del FA-6379. Cantidad total sin cambio (70); cambió el reparto de lateralidad. Der validado 4-ago, izq etiquetado en CEDI 7-ago.",leccion:"La lateralidad no la resuelve el sistema de captura: se resolvió en planta. Chihuahua va a repetirlo si no se define cómo ingresarla."},
+  {id:"h14",fecha:"2026-08-13",proyecto:"Seguros Monterrey",titulo:"Postes FC-5429 liberados a CEDI sin tornillería",detalle:"Los postes del folio salieron sin tornillería; se regresan del CEDI para re-empacar.",fam:"E",resp:"Producción / CEDI",recurrente:true,impacto:"medio",estatus:"resuelto",
+   deteccion:"Detectado ya en CEDI, no en planta.",accion:"Retorno y re-empaque.",leccion:"Primero de tres casos del mismo tipo en cinco días. La verificación de completitud no existía antes de embarcar a CEDI."},
+  {id:"h15",fecha:"2026-08-17",proyecto:"Seguros Monterrey",titulo:"Mamparas enviadas a CEDI sin la repisa",detalle:"El folio de mamparas se envió sin la repisa; se traen del CEDI para reemplazar.",fam:"E",resp:"Producción / CEDI",recurrente:true,impacto:"medio",estatus:"resuelto",
+   deteccion:"Detectado en CEDI al preparar distribución.",accion:"Se cambió el empaque para que mampara y repisa vayan en la misma caja (18-ago). Contramedida a la causa, no al síntoma.",leccion:"El mejor cierre de todo el proyecto: no se corrigió el envío, se corrigió el empaque para que no se pueda repetir."},
+  {id:"h16",fecha:"2026-08-17",proyecto:"Seguros Monterrey",titulo:"FC-5439 sin liberar: falta parte B (repisa)",detalle:"11 mamparas de piso 94 × 90 fabricadas el 13-ago, sin liberar por falta de la parte B.",fam:"E",resp:"Producción / CEDI",recurrente:true,impacto:"medio",estatus:"abierto",
+   deteccion:"Archivo de estatus de Customer Service, corte 27-ago.",accion:"Pendiente.",leccion:"Tercer caso de la familia y el único que sigue abierto diez días después."},
+  {id:"h17",fecha:"2026-08-18",proyecto:"Seguros Monterrey",titulo:"Retrabajo de pintura en láminas de mampara por desabasto",detalle:"Algunas láminas de mamparas se retrabajaron en pintura por falta de la misma.",fam:"A",resp:"Compras / Producción",recurrente:true,impacto:"medio",estatus:"resuelto",
+   deteccion:"Reporte de planta durante la fabricación de mamparas.",accion:"Retrabajo; mamparas cerraron al 100% el 25-ago.",leccion:"Tercer insumo (con rodajas y tela) donde la cantidad planeada no alcanzó. No es falla de compras: la base de cálculo del explosivo subestima consumibles."},
+  {id:"h18",fecha:"2026-08-27",proyecto:"Seguros Monterrey",titulo:"Conversión S691G → S692G para no parar la línea",detalle:"Faltaban 98 sillas base. Se ajustó la OP para retapizar la 691 en lugar de la 692, usando el inventario de 153 S691G. Son dos SKU distintos con empaque distinto.",fam:"F",resp:"Producción / Compras",recurrente:true,impacto:"alto",estatus:"en curso",
+   deteccion:"Programa del día en 36 de 50 por falta de silla base.",accion:"Ajuste de OP; el programa recuperó 50/día y CAPRI cerró las 284 el 27-ago.",leccion:"Resolvió un bloqueo real, pero falta verificar qué modelo cotizó el cliente y ajustar inventario y empaque. Tercera sustitución del proyecto sin verificación documentada."},
+  {id:"h19",fecha:"2026-08-28",proyecto:"Seguros Monterrey",titulo:"Clave del escritorio mal citada en campo (FA-6398 vs FA-6379)",detalle:"Los reportes diarios citaron 'FA-6398' para los 70 escritorios. El sistema dice FA-6379 = 70 pza (35+35). El FC-6398 existe pero es extensión benching, 7 pza.",fam:"C",resp:"Producción / PM",recurrente:true,impacto:"medio",estatus:"corregido",
+   deteccion:"Cruce del reporte de campo contra el archivo de pedidos.",accion:"Clave confirmada como FA-6379.",leccion:"Cuatro claves parecidas circulando (FA-6379, FC-6398, FC-6397, FC-6379). El reporte de campo debe citar la clave del sistema, no de memoria."},
+  {id:"h20",fecha:"2026-08-11",proyecto:"Seguros Monterrey",titulo:"Planos de Chihuahua entregados por color y no por SKU",detalle:"El cliente entregó la configuración por colores; sin SKU no se puede cotizar ni explotar materiales.",fam:"A",resp:"Comercial / Cliente",recurrente:true,impacto:"medio",estatus:"resuelto",
+   deteccion:"Al intentar ingresar el pedido de Chihuahua.",accion:"Validación de configuraciones con Comercial; folios acordados el 12-ago.",leccion:"Consumió días de ingeniería en un pedido cuyo alcance no estaba definido."},
+  {id:"h21",fecha:"2026-08-28",proyecto:"Seguros Monterrey",titulo:"Las 39 mesas de Chihuahua requieren 156 rodajas no contempladas",detalle:"Chihuahua comparte folio FC-5493 con el programa. 39 mesas × 4 rodajas = 156 pza que no están en la OC de 380.",fam:"A",resp:"Compras / Ingeniería",recurrente:true,impacto:"alto",estatus:"abierto",
+   deteccion:"Cruce de la cotización SFE-57-916 contra el explosivo de rodajas del programa.",accion:"Pendiente colocar la compra.",leccion:"Es el mismo componente que detuvo el proyecto tres semanas, con lead time de importación. Repetir el error sería la cuarta vez del mismo patrón."},
+  {id:"h22",fecha:"2026-08-28",proyecto:"Seguros Monterrey",titulo:"Chihuahua no aparece en el calendario de entregas del cliente",detalle:"El calendario compartido el 18-ago tiene 10 renglones. Chihuahua tiene fecha comprometida (5-oct) y no está en él.",fam:"B",resp:"PM / Comercial",recurrente:false,impacto:"alto",estatus:"abierto",
+   deteccion:"Comparación del calendario PDF contra el archivo de pedidos.",accion:"Pendiente incorporar la sucursal 11 al calendario.",leccion:"Una sucursal con compromiso de entrega fuera del instrumento que el cliente usa para medirnos."},
+  {id:"h23",fecha:"2026-08-28",proyecto:"Seguros Monterrey",titulo:"Estatus contradictorio de Oaxaca Nivel 3",detalle:"Comercial reporta que no hay nada pendiente; el archivo de Customer Service dice que falta compartir la cotización con modificación y solicitar el lanzado (179 pza).",fam:"B",resp:"Comercial / Customer Service",recurrente:false,impacto:"alto",estatus:"abierto",
+   deteccion:"Pregunta directa del PM el 28-ago contra el archivo del mismo día.",accion:"Pendiente conciliar.",leccion:"Es el único de los 11 pedidos sin lanzar y las dos áreas tienen versiones distintas."},
+  {id:"h24",fecha:"2026-08-28",proyecto:"Seguros Monterrey",titulo:"Discrepancias de cantidad entre archivos de control",detalle:"FC-6199: 42 en el archivo de CS vs 48 en el de pedidos. FD-5428: 21 vs 22. Silla Ciao completa partida en dos claves (CO-OH757MC 12 + 57-COOH757MC 19 = 31).",fam:"C",resp:"Customer Service / Costos",recurrente:true,impacto:"bajo",estatus:"abierto",
+   deteccion:"Conciliación de los dos archivos de control del programa.",accion:"Pendiente unificar.",leccion:"Dos archivos de control del mismo programa que no cuadran obligan a decidir cuál manda."},
+  {id:"h25",fecha:"2026-08-12",proyecto:"Seguros Monterrey",titulo:"Validación de primeras piezas con tela distinta a la del proyecto",detalle:"Las mamparas de validación se hicieron con otra tela para no consumir la del proyecto (blanco óptico).",fam:"D",resp:"Innovación",recurrente:false,impacto:"bajo",estatus:"resuelto",
+   deteccion:"Decisión deliberada del equipo al preparar la validación.",accion:"Validación de dimensiones, funcionalidad y resistencia sin tocar material de proyecto.",leccion:"Buena práctica a replicar: validar primeras piezas nunca debe consumir material comprometido."},
+  {id:"h26",fecha:"2026-08-12",proyecto:"Seguros Monterrey",titulo:"CAPRI liberado a producción sin silla patrón aprobada",detalle:"Se liberaron 284 sillas a retapizado con 'buenos comentarios de planta y planificación' como criterio.",fam:"D",resp:"Calidad / Producción",recurrente:false,impacto:"medio",estatus:"resuelto",
+   deteccion:"Observación del PM al revisar el criterio de liberación.",accion:"Las 284 cerraron sin rechazo reportado; folio confirmado por etiqueta FC-6443.",leccion:"Salió bien, pero el criterio vivía en la memoria de quien vio la muestra. Con lote grande, dejar muestra patrón firmada."}
 ]};
 const FAMILIAS={
-  A:{nombre:"Datos de origen ≠ realidad",color:"#E2445C",contra:"Checklist de validación en el intake: cruzar cotización + CRM contra el explosivo y el conteo por área antes de aceptar la OC.",dueno:"Costos y Folios + Comercial"},
-  B:{nombre:"Fechas sin sincronizar (Compras↔PCP)",color:"#FDAB3D",contra:"La ETA de todo componente de importación entra al plan de PCP al colocar la PO; no se programa fabricación sin ETA confirmada.",dueno:"Compras + PCP"},
-  C:{nombre:"Datos maestros / claves erróneas",color:"#579BFC",contra:"Validar clave de material contra ficha técnica y fecha ancla contra confirmación del cliente antes de liberar.",dueno:"Ingeniería + PM"},
-  D:{nombre:"Cambio de diseño / retrabajo",color:"#A25DDC",contra:"Validar el punto crítico funcional (prototipo/checklist de liberación) antes de liberar a corte.",dueno:"Ingeniería / Innovación"}
+  A:{nombre:"Datos de origen ≠ realidad",color:"#E2445C",contra:"Checklist de validación en el intake: cruzar cotización + CRM contra el explosivo y el conteo por área antes de aceptar la OC. Los consumibles (rodajas, tela, pintura, herrajes) se calculan contra el conteo físico de partidas, no contra el histórico.",dueno:"Costos y Folios + Comercial"},
+  B:{nombre:"Fechas sin sincronizar (Compras ↔ PCP ↔ Cliente)",color:"#FDAB3D",contra:"La ETA de todo componente de importación entra al plan de PCP al colocar la PO, con holgura mínima de 3 días hábiles. Ningún compromiso de entrega existe fuera del calendario que tiene el cliente.",dueno:"Compras + PCP + PM"},
+  C:{nombre:"Datos maestros / claves erróneas",color:"#579BFC",contra:"Validar clave de material contra ficha técnica antes de liberar y citar siempre la clave del sistema en los reportes de campo, nunca de memoria. La fecha ancla sale de un calendario firmado por el cliente.",dueno:"Ingeniería + PM"},
+  D:{nombre:"Cambio de diseño / retrabajo",color:"#A25DDC",contra:"Validar el punto crítico funcional (prototipo o checklist de liberación) antes de liberar a corte. En lotes de más de 50 piezas, dejar muestra patrón física aprobada y firmada. La validación de primeras piezas nunca consume material del proyecto.",dueno:"Ingeniería / Innovación"},
+  E:{nombre:"Producto incompleto liberado a CEDI",color:"#00A896",contra:"Checklist de completitud firmado antes de que el folio salga de planta, con lista de componentes por folio (tornillería, repisas, remates). Cuando el faltante es sistemático, se corrige el empaque, no el envío.",dueno:"Producción + Calidad + CEDI"},
+  F:{nombre:"Sustitución resuelta en planta sin verificar lo cotizado",color:"#7C3AED",contra:"Toda sustitución de modelo, componente o medida se verifica contra la especificación vendida antes de ejecutarse, y si difiere se notifica al cliente. Se ajusta inventario y empaque en el mismo movimiento.",dueno:"PM + Comercial + Producción"}
 };
 
 /* ===== ESTADO + FIREBASE ===== */
@@ -266,10 +477,41 @@ let STATE=localLoad(); let CUR=null; let SUB="tabla"; let BFILTRO="todas";
 function localLoad(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s);}catch(e){}return JSON.parse(JSON.stringify(SEED));}
 function normaliza(){
   if(!STATE.proyectos)STATE.proyectos=[];
-  STATE.proyectos.forEach(p=>{p.actividades=p.actividades||[];p.riesgos=p.riesgos||[];});
+  STATE.proyectos.forEach(p=>{
+    p.actividades=p.actividades||[];p.riesgos=p.riesgos||[];p.informes=p.informes||[];
+    if(!p.concentrado)p.concentrado={fuente:"",areas:[],conceptos:[]};
+    p.concentrado.areas=p.concentrado.areas||[];p.concentrado.conceptos=p.concentrado.conceptos||[];
+  });
   if(!STATE.hallazgos)STATE.hallazgos=[];
   if(!STATE.solicitudes)STATE.solicitudes=[];
-  if(!STATE.contramedidas){STATE.contramedidas={};Object.entries(FAMILIAS).forEach(([k,f])=>STATE.contramedidas[k]={contra:f.contra,dueno:f.dueno});}
+  if(!STATE.contramedidas)STATE.contramedidas={};
+  Object.entries(FAMILIAS).forEach(([k,f])=>{if(!STATE.contramedidas[k])STATE.contramedidas[k]={contra:f.contra,dueno:f.dueno};});
+  STATE.hallazgos.forEach(h=>{h.deteccion=h.deteccion||"";h.accion=h.accion||"";h.leccion=h.leccion||"";});
+  migra();
+}
+/* Migración de esquema: sube el estado guardado (local o nube) al esquema actual
+   SIN borrar lo que el usuario haya editado. Solo agrega lo que falta. */
+function migra(){
+  const dest=Number(SEED.schema||1);
+  if(Number(STATE.schema||0)>=dest)return;
+  SEED.proyectos.forEach(sp=>{
+    const p=STATE.proyectos.find(x=>x.id===sp.id);
+    if(!p)return;
+    if(sp.concentrado&&!p.concentrado.conceptos.length&&!p.concentrado.areas.length)
+      p.concentrado=JSON.parse(JSON.stringify(sp.concentrado));
+    if(sp.informes&&sp.informes.length&&!p.informes.length)
+      p.informes=JSON.parse(JSON.stringify(sp.informes));
+    if(sp.corte)p.corte=sp.corte;
+    if(sp.id==="segmty"){ p.valor=sp.valor; p.inauguracion=sp.inauguracion; p.cliente=sp.cliente;
+      p.actividades=JSON.parse(JSON.stringify(sp.actividades));
+      p.riesgos=JSON.parse(JSON.stringify(sp.riesgos)); }
+  });
+  (SEED.hallazgos||[]).forEach(sh=>{
+    const ex=STATE.hallazgos.find(h=>h.id===sh.id);
+    if(!ex)STATE.hallazgos.push(JSON.parse(JSON.stringify(sh)));
+    else{["deteccion","accion","leccion"].forEach(k=>{if(!ex[k])ex[k]=sh[k]||"";});}
+  });
+  STATE.schema=dest;
 }
 function save(){
   try{localStorage.setItem(KEY,JSON.stringify(STATE));}catch(e){}
@@ -470,9 +712,11 @@ function renderMaestro(){
 function renderProyecto(){
   const p=proy(CUR);if(!p)return;
   const av=avanceProy(p),d=diasA(p.inauguracion);
-  const tabs=[["tabla","Tabla principal"],["gantt","Gantt"],["kanban","Kanban"],["calendario","Calendario"],["riesgos","Riesgos"],["bitacora","Bitácora"],["dashboard","Dashboard"]];
+  const tabs=[["tabla","Tabla principal"],["concentrado","Concentrado"],["gantt","Gantt"],["kanban","Kanban"],["calendario","Calendario"],["riesgos","Riesgos"],["bitacora","Hallazgos"],["informes","Informes"],["dashboard","Dashboard"]];
   let body="";
-  if(SUB==="tabla")body=subTabla(p);
+  if(SUB==="concentrado")body=subConcentrado(p);
+  else if(SUB==="informes")body=subInformes(p);
+  else if(SUB==="tabla")body=subTabla(p);
   else if(SUB==="gantt")body=subGantt(p);
   else if(SUB==="kanban")body=subKanban(p);
   else if(SUB==="calendario")body=subCalendario(p);
@@ -604,6 +848,195 @@ function subCalendario(p){
     </div></div>`+leyenda();
 }
 
+/* --- SUB: CONCENTRADO DE AVANCE (del proyecto) --- */
+const CEST={"En CEDI":"#00C875","Resuelto":"#00C875","En proceso":"#FDAB3D","Comprometido":"#579BFC","Incompleto":"#E2445C","No programado":"#C4C4C4"};
+const CEST_LIST=["En CEDI","Resuelto","En proceso","Comprometido","Incompleto","No programado"];
+const AEST={"Lanzado":"#00C875","Sin lanzar":"#E2445C","En captura":"#FDAB3D","Entregado":"#2563EB"};
+const AEST_LIST=["Lanzado","Sin lanzar","En captura","Entregado"];
+let CFILTRO="todos";
+function setCFiltro(f){CFILTRO=f;renderProyecto();}
+function pct(ll,b){b=Number(b||0);if(!b)return 0;return Math.round(Number(ll||0)/b*100);}
+function sumBloque(cs){return cs.reduce((a,c)=>({b:a.b+Number(c.base||0),l:a.l+Number(c.llevamos||0)}),{b:0,l:0});}
+function barra(p_,col){return `<div class="avance"><div class="avbar"><div class="avfill" style="width:${Math.min(100,p_)}%;background:${col}"></div></div><span class="avnum">${p_}%</span></div>`;}
+function subConcentrado(p){
+  const C=p.concentrado||{areas:[],conceptos:[]};
+  const fab=C.conceptos.filter(c=>c.tipo==="fab"), com=C.conceptos.filter(c=>c.tipo==="com");
+  const sf=sumBloque(fab), sc=sumBloque(com), st={b:sf.b+sc.b,l:sf.l+sc.l};
+  const pf=pct(sf.l,sf.b), pc=pct(sc.l,sc.b), pt=pct(st.l,st.b);
+  const abiertos=C.conceptos.filter(c=>Number(c.llevamos||0)<Number(c.base||0));
+  const faltan=abiertos.reduce((a,c)=>a+(Number(c.base||0)-Number(c.llevamos||0)),0);
+
+  const filaC=(c,i)=>{const q=pct(c.llevamos,c.base),col=CEST[c.estatus]||"#C4C4C4",falta=Number(c.base||0)-Number(c.llevamos||0);
+    return `<tr>
+      <td class="grpbar"><span class="gbar" style="background:${col}"></span></td>
+      <td class="cellpad mono" style="font-size:11.5px">${esc(c.sku)}</td>
+      <td class="cellpad"><b style="font-size:12.5px">${esc(c.desc)}</b>${c.nota?`<div style="font-size:11px;color:var(--txt3);margin-top:3px;line-height:1.45">${esc(c.nota)}</div>`:""}</td>
+      <td class="cellpad mono" style="text-align:right">${Number(c.base||0).toLocaleString("es-MX")}</td>
+      <td class="cellpad mono" style="text-align:right"><input type="number" value="${Number(c.llevamos||0)}" style="width:70px;text-align:right;font-family:DM Mono,monospace;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:4px 6px" onchange="updConcepto('${p.id}','${c.id}','llevamos',this.value)"></td>
+      <td class="cellpad mono" style="text-align:right;color:${falta>0?'var(--s-bloq)':'var(--txt3)'};font-weight:${falta>0?700:400}">${falta>0?falta.toLocaleString("es-MX"):"—"}</td>
+      <td style="min-width:130px">${barra(q,col)}</td>
+      <td style="text-align:center"><select class="estado" style="background:var(--panel);color:var(--txt);width:calc(100% - 12px);min-width:118px" onchange="updConcepto('${p.id}','${c.id}','estatus',this.value)">${CEST_LIST.map(s=>`<option ${s===c.estatus?"selected":""}>${s}</option>`).join("")}</select></td>
+      <td style="text-align:center"><button class="delbtn" title="Eliminar concepto" onclick="borrarConcepto('${p.id}','${c.id}')">✕</button></td>
+    </tr>`;};
+
+  const bloque=(titulo,color,cs,resumen,ppct,leyenda)=>{
+    const vis=CFILTRO==="abiertos"?cs.filter(c=>Number(c.llevamos||0)<Number(c.base||0)):cs;
+    return `<div class="board">
+      <div class="board-head"><span class="gc" style="background:${color}"></span><h3>${titulo}</h3>
+        <span class="count">${vis.length} de ${cs.length} conceptos · ${resumen.l.toLocaleString("es-MX")} / ${resumen.b.toLocaleString("es-MX")} pza</span>
+        <div style="margin-left:auto;min-width:150px">${barra(ppct,color)}</div></div>
+      <p class="note" style="margin:0;padding:9px 18px;border-bottom:1px solid var(--line)">${leyenda}</p>
+      <table class="tbl"><thead><tr><th style="width:11px"></th><th style="width:110px">Clave</th><th>Concepto</th>
+        <th style="text-align:right;width:90px">Programado</th><th style="text-align:right;width:100px">Llevamos</th>
+        <th style="text-align:right;width:80px">Falta</th><th style="width:140px">%</th>
+        <th style="text-align:center;width:140px">Estatus</th><th style="width:36px"></th></tr></thead>
+      <tbody>${vis.map(filaC).join("")||`<tr><td colspan="9" class="cellpad" style="color:var(--txt3)">Sin conceptos en este filtro.</td></tr>`}</tbody></table>
+      <div class="addrow" onclick="modalNuevoConcepto('${p.id}','${cs===fab?"fab":"com"}')">+ Agregar concepto ${cs===fab?"de fabricación":"comercializado"}</div>
+    </div>`;};
+
+  const areas=C.areas.map(a=>{const col=AEST[a.estatus]||"#C4C4C4";
+    return `<tr>
+      <td class="grpbar"><span class="gbar" style="background:${col}"></span></td>
+      <td class="cellpad"><b style="font-size:12.5px">${esc(a.nombre)}</b>${a.nota?`<div style="font-size:11px;color:var(--txt3);margin-top:3px;line-height:1.45">${esc(a.nota)}</div>`:""}</td>
+      <td class="cellpad mono" style="font-size:11.5px">${esc(a.pedido)}</td>
+      <td class="cellpad mono" style="text-align:right">${Number(a.piezas||0).toLocaleString("es-MX")}</td>
+      <td class="cellpad" style="font-size:12px;font-weight:700">${esc(a.entrega)}</td>
+      <td class="cellpad" style="font-size:11.5px;color:var(--txt2)">${esc(a.armado)}</td>
+      <td style="text-align:center"><select class="estado" style="background:var(--panel);color:var(--txt);width:calc(100% - 12px);min-width:110px" onchange="updArea('${p.id}','${a.id}','estatus',this.value)">${AEST_LIST.map(s=>`<option ${s===a.estatus?"selected":""}>${s}</option>`).join("")}</select></td>
+      <td style="text-align:center"><button class="delbtn" title="Eliminar área" onclick="borrarArea('${p.id}','${a.id}')">✕</button></td>
+    </tr>`;}).join("");
+  const totPz=C.areas.reduce((a,x)=>a+Number(x.piezas||0),0);
+  const sinLanzar=C.areas.filter(a=>a.estatus==="Sin lanzar").length;
+
+  return `<div class="board" style="border:none;box-shadow:none;background:transparent;margin-bottom:6px">
+    <p class="sub" style="margin:0">Concentrado de avance: qué se programó, qué llevamos y qué falta. Separa lo que <b>fabrica planta</b> de lo que es <b>producto comercializado</b>, porque son dos cadenas distintas y un solo porcentaje las esconde.${C.fuente?`<br><span style="font-size:11.5px;color:var(--txt3)">Fuente: ${esc(C.fuente)}</span>`:""}</p></div>
+  <div class="strip">
+    <div class="chip"><div class="k">Avance total del alcance</div><div class="v">${pt}%</div></div>
+    <div class="chip"><div class="k">Fabricación (planta)</div><div class="v" style="color:${pf>=100?'var(--s-term)':'var(--s-proc)'}">${pf}%</div></div>
+    <div class="chip"><div class="k">Comercializado</div><div class="v" style="color:${pc>=100?'var(--s-term)':'var(--s-listo)'}">${pc}%</div></div>
+    <div class="chip"><div class="k">Piezas por cerrar</div><div class="v" style="color:${faltan?'var(--s-bloq)':'var(--s-term)'}">${faltan.toLocaleString("es-MX")}</div></div>
+    <div class="chip"><div class="k">Conceptos abiertos</div><div class="v">${abiertos.length}</div></div>
+  </div>
+  <div class="famfilt" style="margin-bottom:12px">
+    <button class="${CFILTRO==="todos"?"on":""}" onclick="setCFiltro('todos')">Todos · ${C.conceptos.length}</button>
+    <button class="${CFILTRO==="abiertos"?"on":""}" onclick="setCFiltro('abiertos')">Solo lo que falta · ${abiertos.length}</button>
+  </div>
+  <div class="board">
+    <div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Áreas y sucursales</h3>
+      <span class="count">${C.areas.length} áreas · ${totPz.toLocaleString("es-MX")} pza</span>
+      ${sinLanzar?`<span class="pill r" style="margin-left:10px">${sinLanzar} sin lanzar</span>`:""}</div>
+    <p class="note" style="margin:0;padding:9px 18px;border-bottom:1px solid var(--line)">La fecha de entrega es la comprometida con el cliente. El avance se prioriza contra la fecha más próxima, no contra el total.</p>
+    <table class="tbl"><thead><tr><th style="width:11px"></th><th>Área / sucursal</th><th style="width:120px">Pedido</th>
+      <th style="text-align:right;width:80px">Piezas</th><th style="width:130px">Entrega</th><th style="width:160px">Armado</th>
+      <th style="text-align:center;width:130px">Estatus</th><th style="width:36px"></th></tr></thead>
+    <tbody>${areas||`<tr><td colspan="8" class="cellpad" style="color:var(--txt3)">Sin áreas registradas.</td></tr>`}</tbody></table>
+    <div class="addrow" onclick="modalNuevaArea('${p.id}')">+ Agregar área o sucursal</div>
+  </div>
+  ${bloque("Fabricación en planta","#2563EB",fab,sf,pf,"Lo que produce Línea Italia. Su avance lo reporta planta y se cierra con entrada a CEDI.")}
+  ${bloque("Producto comercializado","#00A896",com,sc,pc,"Compra o importación. No pasa por programación de planta, así que nunca tendrá fecha de producción: su cierre es la recepción confirmada.")}`;
+}
+function updConcepto(pid,cid,campo,val){const p=proy(pid);const c=(p.concentrado.conceptos||[]).find(x=>x.id===cid);if(!c)return;
+  if(campo==="llevamos"){let n=Number(val)||0;if(n<0)n=0;if(n>Number(c.base||0))n=Number(c.base||0);c.llevamos=n;
+    if(n>=Number(c.base||0)&&c.estatus!=="Resuelto")c.estatus=(c.tipo==="com"?"Resuelto":"En CEDI");
+    else if(n>0&&n<Number(c.base||0))c.estatus="En proceso";}
+  else c[campo]=val;
+  save();renderProyecto();}
+function borrarConcepto(pid,cid){if(!confirm("¿Eliminar este concepto del concentrado?"))return;
+  const p=proy(pid);p.concentrado.conceptos=p.concentrado.conceptos.filter(x=>x.id!==cid);save();renderProyecto();}
+function modalNuevoConcepto(pid,tipo){
+  openModal(`<h3>Nuevo concepto · ${tipo==="fab"?"fabricación":"comercializado"}</h3>
+   <label>Clave / SKU</label><input id="cc_s" placeholder="FC-0000">
+   <label>Concepto</label><input id="cc_d" placeholder="Descripción del producto">
+   <label>Programado (base)</label><input id="cc_b" type="number" value="0">
+   <label>Llevamos</label><input id="cc_l" type="number" value="0">
+   <label>Estatus</label><select id="cc_e">${CEST_LIST.map(s=>`<option ${s===(tipo==="fab"?"No programado":"Comprometido")?"selected":""}>${s}</option>`).join("")}</select>
+   <label>Nota (opcional)</label><input id="cc_n" placeholder="Contexto, folios, fechas">
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarConcepto('${pid}','${tipo}')">Agregar</button></div>`);
+}
+function guardarConcepto(pid,tipo){
+  const s=$("#cc_s").value.trim();if(!s){alert("Escribe la clave");return;}
+  const p=proy(pid);
+  p.concentrado.conceptos.push({id:"c"+Date.now(),sku:s,desc:$("#cc_d").value.trim()||s,tipo,
+    base:Number($("#cc_b").value)||0,llevamos:Number($("#cc_l").value)||0,estatus:$("#cc_e").value,nota:$("#cc_n").value.trim()});
+  save();closeModal();renderProyecto();
+}
+function updArea(pid,aid,campo,val){const p=proy(pid);const a=(p.concentrado.areas||[]).find(x=>x.id===aid);if(a){a[campo]=val;save();renderProyecto();}}
+function borrarArea(pid,aid){if(!confirm("¿Eliminar esta área?"))return;
+  const p=proy(pid);p.concentrado.areas=p.concentrado.areas.filter(x=>x.id!==aid);save();renderProyecto();}
+function modalNuevaArea(pid){
+  openModal(`<h3>Nueva área o sucursal</h3>
+   <label>Nombre</label><input id="ca_n" placeholder="Ciudad / nivel / anexo">
+   <label>Pedido</label><input id="ca_p" placeholder="P-00000000">
+   <label>Piezas</label><input id="ca_q" type="number" value="0">
+   <label>Entrega comprometida</label><input id="ca_e" placeholder="27 sep – 2 oct">
+   <label>Armado estimado</label><input id="ca_a" placeholder="7 personas · 1 semana">
+   <label>Estatus</label><select id="ca_s">${AEST_LIST.map(s=>`<option>${s}</option>`).join("")}</select>
+   <label>Nota (opcional)</label><input id="ca_o">
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarArea('${pid}')">Agregar</button></div>`);
+}
+function guardarArea(pid){
+  const n=$("#ca_n").value.trim();if(!n){alert("Escribe el nombre");return;}
+  const p=proy(pid);
+  p.concentrado.areas.push({id:"ar"+Date.now(),nombre:n,pedido:$("#ca_p").value.trim(),piezas:Number($("#ca_q").value)||0,
+    entrega:$("#ca_e").value.trim(),armado:$("#ca_a").value.trim(),estatus:$("#ca_s").value,nota:$("#ca_o").value.trim()});
+  save();closeModal();renderProyecto();
+}
+
+/* --- SUB: INFORMES A DIRECCIÓN (del proyecto) --- */
+function subInformes(p){
+  const I=[...(p.informes||[])].sort((a,b)=>b.fecha.localeCompare(a.fecha)||b.id.localeCompare(a.id));
+  const conAvance=I.filter(x=>x.avance!=null);
+  const tipos={};I.forEach(x=>tipos[x.tipo]=(tipos[x.tipo]||0)+1);
+  const items=I.map(x=>`<div style="display:flex;gap:14px;padding:15px 18px;border-bottom:1px solid var(--line)">
+     <div style="flex:0 0 88px;text-align:right">
+       <div class="mono" style="font-size:12px;font-weight:700;color:var(--accent)">${esc(x.fecha)}</div>
+       <div style="font-size:10px;color:var(--txt3);margin-top:3px;text-transform:uppercase;letter-spacing:.4px">${esc(x.tipo)}</div>
+       ${x.avance!=null?`<div class="pill n" style="margin-top:6px">${x.avance}%</div>`:""}
+     </div>
+     <div style="flex:1;border-left:2px solid var(--line);padding-left:15px">
+       <b style="font-size:13px;line-height:1.4">${esc(x.titulo)}</b>
+       ${x.contenido?`<div style="font-size:12px;color:var(--txt2);margin-top:6px;line-height:1.55">${esc(x.contenido)}</div>`:""}
+       ${x.riesgos?`<div style="font-size:11.5px;margin-top:8px;padding:8px 11px;background:#E2445C11;border-left:3px solid #E2445C;border-radius:0 6px 6px 0;line-height:1.5"><b style="color:#E2445C">Riesgos · </b>${esc(x.riesgos)}</div>`:""}
+       ${x.acciones?`<div style="font-size:11.5px;margin-top:6px;padding:8px 11px;background:#00A89611;border-left:3px solid #00A896;border-radius:0 6px 6px 0;line-height:1.5"><b style="color:#00A896">Acciones y notas del PM · </b>${esc(x.acciones)}</div>`:""}
+     </div>
+     <div style="flex:0 0 30px;text-align:right"><button class="delbtn" title="Eliminar informe" onclick="borrarInforme('${p.id}','${x.id}')">✕</button></div>
+   </div>`).join("");
+  return `<div class="board" style="border:none;box-shadow:none;background:transparent;margin-bottom:6px">
+    <p class="sub" style="margin:0">Bitácora de lo que se comunicó y cuándo. Es el rastro de la gestión: cada informe queda fechado con su contenido, los riesgos vigentes en ese momento y las acciones tomadas. Al cierre, este módulo <b>es</b> el expediente del proyecto.</p></div>
+  <div class="strip">
+    <div class="chip"><div class="k">Informes registrados</div><div class="v">${I.length}</div></div>
+    <div class="chip"><div class="k">Último reporte</div><div class="v" style="font-size:14px">${I.length?esc(I[0].fecha):"—"}</div></div>
+    <div class="chip"><div class="k">Con avance declarado</div><div class="v">${conAvance.length}</div></div>
+    <div class="chip"><div class="k">Corte de estatus</div><div class="v" style="font-size:14px">${p.corte?esc(p.corte):"—"}</div></div>
+  </div>
+  <div class="board">
+    <div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Informes y reportes</h3><span class="count">${I.length} entradas</span></div>
+    ${items||'<div class="cellpad" style="padding:18px;color:var(--txt3);font-size:13px">Sin informes registrados.</div>'}
+    <div class="addrow" onclick="modalNuevoInforme('${p.id}')">+ Registrar informe</div>
+  </div>`;
+}
+function borrarInforme(pid,iid){if(!confirm("¿Eliminar este informe de la bitácora?"))return;
+  const p=proy(pid);p.informes=(p.informes||[]).filter(x=>x.id!==iid);save();renderProyecto();}
+function modalNuevoInforme(pid){
+  const hoy=new Date().toISOString().slice(0,10);
+  openModal(`<h3>Registrar informe</h3>
+   <label>Fecha</label><input id="ci_f" type="date" value="${hoy}">
+   <label>Tipo</label><select id="ci_t"><option>Informe a dirección</option><option>Resumen del día</option><option>Corte de estatus</option><option>Reunión con cliente</option><option>Nota del PM</option></select>
+   <label>Título</label><input id="ci_ti" placeholder="Una línea que resuma el mensaje">
+   <label>Avance declarado % (opcional)</label><input id="ci_a" type="number" placeholder="">
+   <label>Contenido</label><textarea id="ci_c" style="width:100%;height:80px;font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:9px" placeholder="Qué se avanzó"></textarea>
+   <label>Riesgos vigentes</label><textarea id="ci_r" style="width:100%;height:56px;font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:9px"></textarea>
+   <label>Acciones y notas del PM</label><textarea id="ci_ac" style="width:100%;height:56px;font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:9px"></textarea>
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarInforme('${pid}')">Guardar</button></div>`);
+}
+function guardarInforme(pid){
+  const t=$("#ci_ti").value.trim();if(!t){alert("Escribe el título");return;}
+  const p=proy(pid);p.informes=p.informes||[];
+  const av=$("#ci_a").value;
+  p.informes.push({id:"i"+Date.now(),fecha:$("#ci_f").value||new Date().toISOString().slice(0,10),tipo:$("#ci_t").value,
+    titulo:t,avance:av===""?null:Number(av),contenido:$("#ci_c").value.trim(),riesgos:$("#ci_r").value.trim(),acciones:$("#ci_ac").value.trim()});
+  save();closeModal();renderProyecto();
+}
 /* --- SUB: RIESGOS (del proyecto) --- */
 function subRiesgos(p){
   if(!p.riesgos)p.riesgos=[];
@@ -646,7 +1079,7 @@ function guardarRiesgo(pid){
 /* --- SUB: BITÁCORA (del proyecto) --- */
 function subBitacora(p){
   const H=(STATE.hallazgos||[]).filter(h=>h.proyecto===p.nombre);
-  const cnt={A:0,B:0,C:0,D:0};H.forEach(h=>{if(cnt[h.fam]!=null)cnt[h.fam]++;});
+  const cnt={};Object.keys(FAMILIAS).forEach(k=>cnt[k]=0);H.forEach(h=>{if(cnt[h.fam]!=null)cnt[h.fam]++;});
   const total=H.length||1;
   const arr=Object.entries(cnt).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v);
   const max=Math.max(1,...arr.map(a=>a.v));
@@ -663,12 +1096,17 @@ function subBitacora(p){
   const Hf=BFILTRO==="todas"?H:H.filter(h=>h.fam===BFILTRO);
   const rows=[...Hf].sort((a,b)=>a.fam.localeCompare(b.fam)).map((h,i)=>`<tr>
     <td class="cellpad mono">${String(i+1).padStart(2,"0")}</td>
-    <td class="cellpad"><b>${esc(h.titulo)}</b><div style="font-size:11.5px;color:var(--txt3);margin-top:2px">${esc(h.detalle)}</div><div style="font-size:10.5px;color:var(--txt3);margin-top:2px">${esc(h.resp)}</div></td>
+    <td class="cellpad"><b>${esc(h.titulo)}</b><div style="font-size:11.5px;color:var(--txt2);margin-top:3px;line-height:1.45">${esc(h.detalle)}</div>
+      ${h.deteccion?`<div style="font-size:11px;margin-top:6px;line-height:1.45"><b style="color:var(--txt3)">Cómo se detectó · </b><span style="color:var(--txt2)">${esc(h.deteccion)}</span></div>`:""}
+      ${h.accion?`<div style="font-size:11px;margin-top:3px;line-height:1.45"><b style="color:#00A896">Qué se hizo · </b><span style="color:var(--txt2)">${esc(h.accion)}</span></div>`:""}
+      ${h.leccion?`<div style="font-size:11px;margin-top:3px;line-height:1.45"><b style="color:var(--accent)">Lección · </b><span style="color:var(--txt2)">${esc(h.leccion)}</span></div>`:""}
+      <div style="font-size:10.5px;color:var(--txt3);margin-top:5px">${esc(h.fecha)} · ${esc(h.resp)}</div>
+      <button class="btn-ghost" style="padding:2px 9px;font-size:10.5px;margin-top:6px" onclick="modalEditarHallazgo('${h.id}')">Editar</button></td>
     <td style="text-align:center"><span class="pill" style="background:${FAMILIAS[h.fam].color}22;color:${FAMILIAS[h.fam].color}">${h.fam}</span>${h.recurrente?'<div style="font-size:9px;color:#E2445C;font-family:DM Mono;margin-top:3px">RECURRENTE</div>':''}</td>
     <td class="cellpad"><span class="pill ${h.impacto==='alto'?'r':h.impacto==='medio'?'a':'n'}">${h.impacto}</span></td>
     <td style="text-align:center"><select class="estado" style="background:var(--panel);color:var(--txt);width:calc(100% - 12px)" onchange="updHallazgo('${h.id}',this.value)">${["abierto","por corregir","en curso","corregido","resuelto","cerrado"].map(s=>`<option ${s===h.estatus?'selected':''}>${s}</option>`).join("")}</select></td>
   </tr>`).join("");
-  const filtros=`<div class="famfilt">${[["todas","Todas"],["A","A"],["B","B"],["C","C"],["D","D"]].map(([k,l])=>`<button class="${BFILTRO===k?'on':''}" style="${k!=='todas'&&BFILTRO===k?`background:${FAMILIAS[k].color};border-color:${FAMILIAS[k].color};color:#fff`:''}" onclick="setBFiltro('${k}')">${l}${k!=='todas'?` · ${cnt[k]}`:''}</button>`).join("")}</div>`;
+  const filtros=`<div class="famfilt">${[["todas","Todas"],...Object.keys(FAMILIAS).map(k=>[k,k])].map(([k,l])=>`<button class="${BFILTRO===k?'on':''}" style="${k!=='todas'&&BFILTRO===k?`background:${FAMILIAS[k].color};border-color:${FAMILIAS[k].color};color:#fff`:''}" onclick="setBFiltro('${k}')">${l}${k!=='todas'?` · ${cnt[k]}`:''}</button>`).join("")}</div>`;
   const contra=Object.entries(FAMILIAS).map(([k,f])=>{const c=CM(k);return `<div class="board" style="border-top:3px solid ${f.color};margin-bottom:0"><div style="padding:14px 16px"><div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><span style="width:24px;height:24px;border-radius:6px;background:${f.color};color:#fff;display:grid;place-items:center;font-weight:700;font-family:DM Mono">${k}</span><b style="font-size:12.5px">Familia ${k} · ${cnt[k]}</b><button class="btn-ghost" style="margin-left:auto;padding:3px 10px;font-size:11px" onclick="modalEditarContra('${k}')">Editar</button></div><div style="font-size:12px;color:var(--txt2);line-height:1.5">${esc(c.contra)}</div><div style="font-size:11px;color:var(--txt3);margin-top:8px;padding-top:7px;border-top:1px solid var(--line)">Dueño: <b style="color:var(--accent)">${esc(c.dueno)}</b></div></div></div>`}).join("");
   const pareto=H.length?`<div class="board"><div class="board-head"><span class="gc" style="background:#E2445C"></span><h3>Pareto por familia</h3></div><div style="padding:12px 18px"><svg viewBox="0 0 ${W} ${Hh}" style="width:100%;max-width:600px"><line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plot}" stroke="var(--line)"/><line x1="${padL}" y1="${padT+plot}" x2="${W-40}" y2="${padT+plot}" stroke="var(--line)"/>${bars}<polyline points="${poly}" fill="none" stroke="var(--txt)" stroke-width="2"/>${dHtml}${labels}</svg><p class="note">La <b>Familia ${dom.k} (${FAMILIAS[dom.k].nombre})</b> es la que más se repite en este proyecto.</p></div></div>`:"";
   return `<div class="board" style="border:none;box-shadow:none;background:transparent;margin-bottom:8px"><p class="sub" style="margin:0">Hallazgos de este proyecto, clasificados por causa raíz. Registra lo que salió mal para no repetirlo.</p></div>
@@ -676,7 +1114,7 @@ function subBitacora(p){
     <div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Registro de hallazgos</h3><span class="count">${Hf.length}${BFILTRO!=='todas'?' de '+H.length:''}</span><div style="margin-left:auto">${filtros}</div></div>
       <table class="tbl"><thead><tr><th>#</th><th>Hallazgo</th><th style="text-align:center">Familia</th><th>Impacto</th><th style="text-align:center;width:130px">Estatus</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="cellpad" style="color:var(--txt3)">Sin hallazgos en este filtro.</td></tr>'}</tbody></table>
       <div class="addrow" onclick="modalNuevoHallazgoProy('${p.id}')">+ Registrar hallazgo</div></div>
-    <div style="font-size:13px;font-weight:700;margin:6px 0 10px">Contramedidas replicables</div><div class="dashgrid" style="grid-template-columns:repeat(2,1fr)">${contra}</div>`;
+    <div style="font-size:13px;font-weight:700;margin:6px 0 10px">Contramedidas replicables</div><div class="dashgrid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">${contra}</div>`;
 }
 function setBFiltro(f){BFILTRO=f;renderProyecto();}
 function modalEditarContra(k){
@@ -692,20 +1130,45 @@ function guardarContra(k){
   STATE.contramedidas[k]={contra:$("#cm_t").value.trim()||FAMILIAS[k].contra,dueno:$("#cm_d").value.trim()||FAMILIAS[k].dueno};
   save();closeModal();renderProyecto();
 }
+function campoTA(id,label,val,ph,h){return `<label>${label}</label><textarea id="${id}" placeholder="${ph}" style="width:100%;height:${h}px;font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:9px">${esc(val||"")}</textarea>`;}
+function formHallazgo(h){h=h||{};
+  return `<label>Título</label><input id="h_t" placeholder="¿Qué se encontró?" value="${esc(h.titulo||"")}">
+   ${campoTA("h_d","Detalle",h.detalle,"Descripción de lo encontrado",56)}
+   ${campoTA("h_de","Cómo se detectó",h.deteccion,"Qué revisión, cruce o prueba lo sacó a la luz",46)}
+   ${campoTA("h_ac","Qué se hizo",h.accion,"Acción tomada y resultado",56)}
+   ${campoTA("h_le","Lección aprendida",h.leccion,"Qué debe cambiar para que no se repita",46)}
+   <label>Familia de causa raíz</label><select id="h_f">${Object.entries(FAMILIAS).map(([k,f])=>`<option value="${k}" ${k===h.fam?"selected":""}>${k} · ${f.nombre}</option>`).join("")}</select>
+   <label>Responsable de origen</label><input id="h_r" placeholder="Área o persona" value="${esc(h.resp||"")}">
+   <label>Impacto</label><select id="h_i">${["alto","medio","bajo"].map(x=>`<option ${x===(h.impacto||"medio")?"selected":""}>${x}</option>`).join("")}</select>
+   <label>Estatus</label><select id="h_e">${["abierto","por corregir","en curso","corregido","resuelto","cerrado"].map(x=>`<option ${x===(h.estatus||"abierto")?"selected":""}>${x}</option>`).join("")}</select>
+   <label style="display:flex;align-items:center;gap:8px;margin-top:10px"><input type="checkbox" id="h_rec" ${h.recurrente?"checked":""} style="width:auto;margin:0"> Es un patrón recurrente</label>`;}
+function leerHallazgo(){return {titulo:$("#h_t").value.trim(),detalle:$("#h_d").value.trim(),deteccion:$("#h_de").value.trim(),
+  accion:$("#h_ac").value.trim(),leccion:$("#h_le").value.trim(),fam:$("#h_f").value,resp:$("#h_r").value.trim(),
+  impacto:$("#h_i").value,estatus:$("#h_e").value,recurrente:$("#h_rec").checked};}
 function modalNuevoHallazgoProy(pid){
   const p=proy(pid);
   openModal(`<h3>Registrar hallazgo · ${esc(p.nombre)}</h3>
-   <label>Título</label><input id="h_t" placeholder="¿Qué se detectó?">
-   <label>Detalle</label><input id="h_d" placeholder="Descripción breve">
-   <label>Familia</label><select id="h_f">${Object.entries(FAMILIAS).map(([k,f])=>`<option value="${k}">${k} · ${f.nombre}</option>`).join("")}</select>
-   <label>Responsable de origen</label><input id="h_r" placeholder="Área o persona">
-   <label>Impacto</label><select id="h_i"><option>alto</option><option selected>medio</option><option>bajo</option></select>
+   <p style="font-size:11.5px;color:var(--txt3);margin:-4px 0 10px;line-height:1.5">Los cinco campos convierten el registro en expediente: qué se encontró, cómo se detectó, qué se hizo, cómo quedó y qué se aprende.</p>
+   ${formHallazgo(null)}
    <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarHallazgoProy('${pid}')">Guardar</button></div>`);
 }
 function guardarHallazgoProy(pid){
-  const t=$("#h_t").value.trim();if(!t){alert("Escribe el título");return;}
+  const d=leerHallazgo();if(!d.titulo){alert("Escribe el título");return;}
   const p=proy(pid);if(!STATE.hallazgos)STATE.hallazgos=[];
-  STATE.hallazgos.push({id:"h"+Date.now(),fecha:new Date().toISOString().slice(0,10),proyecto:p.nombre,titulo:t,detalle:$("#h_d").value,fam:$("#h_f").value,resp:$("#h_r").value,recurrente:false,impacto:$("#h_i").value,estatus:"abierto"});
+  STATE.hallazgos.push(Object.assign({id:"h"+Date.now(),fecha:new Date().toISOString().slice(0,10),proyecto:p.nombre},d));
+  save();closeModal();renderProyecto();
+}
+function modalEditarHallazgo(hid){
+  const h=(STATE.hallazgos||[]).find(x=>x.id===hid);if(!h)return;
+  openModal(`<h3>Editar hallazgo</h3>
+   <label>Fecha</label><input id="h_fe" type="date" value="${esc(h.fecha||"")}">
+   ${formHallazgo(h)}
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarEdicionHallazgo('${hid}')">Guardar</button></div>`);
+}
+function guardarEdicionHallazgo(hid){
+  const h=(STATE.hallazgos||[]).find(x=>x.id===hid);if(!h)return;
+  const d=leerHallazgo();if(!d.titulo){alert("Escribe el título");return;}
+  Object.assign(h,d);h.fecha=$("#h_fe").value||h.fecha;
   save();closeModal();renderProyecto();
 }
 
@@ -801,6 +1264,7 @@ function modalNuevoProyecto(){
 function guardarProyecto(){
   const n=$("#m_nom").value.trim();if(!n){alert("Escribe el nombre");return;}
   STATE.proyectos.push({id:"p"+Date.now(),nombre:n,cliente:$("#m_cli").value||"",valor:Number($("#m_val").value)||0,inauguracion:$("#m_fec").value||"",riesgos:[],
+   concentrado:{fuente:"",areas:[],conceptos:[]},informes:[],
    actividades:[
     act("Planeación","Confirmar alcance","Project Manager","","","No iniciado"),
     act("Diseño","Elaborar propuesta","Diseño","","","No iniciado"),
