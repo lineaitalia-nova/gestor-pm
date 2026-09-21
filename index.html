@@ -525,7 +525,10 @@ function bootFirebase(){
     firebase.initializeApp(firebaseConfig);
     setSync("autenticando…");
     firebase.auth().signInAnonymously().then(()=>{
-      DBREF=firebase.database().ref('gestor_pm/state');
+      // Entorno (sep 2026): desde disco o localhost usa el nodo _test; publicado en
+      // GitHub Pages usa produccion. Evita que una prueba local toque datos reales.
+      const FB_ENV=(location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))?'_test/':'';
+      DBREF=firebase.database().ref(FB_ENV+'gestor_pm/state');
       setSync("conectando…");
       DBREF.once('value').then(snap=>{
         const v=snap.val();
