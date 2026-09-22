@@ -473,6 +473,15 @@ const firebaseConfig={
   appId:"1:533633758350:web:f458ed680dae8dc791c5df"
 };
 let DBREF=null, FBLISTO=false;
+/* Control de concurrencia (sep 2026). Antes save() hacia DBREF.set(STATE): escribia el
+   arbol completo sin mirar que habia en la nube. Una pestana abierta desde ayer, al
+   guardar cualquier cosa, borraba todo lo hecho desde entonces en otra pestana o en
+   otro equipo. Y como el arranque leia con once('value') y no volvia a escuchar, esa
+   pestana nunca se enteraba. Mismo patron que ya se corrigio en el NPD Manager.
+     VISTO_TS      — sello del estado que esta pestana cargo o escribio por ultima vez
+     MI_ULTIMO_TS  — para reconocer el eco de mis propias escrituras en el listener
+     PEND_REMOTO   — cambio remoto en espera mientras haya un dialogo abierto          */
+let VISTO_TS=0, MI_ULTIMO_TS=0, PEND_REMOTO=null;
 let STATE=localLoad(); let CUR=null; let SUB="tabla"; let BFILTRO="todas";
 function localLoad(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s);}catch(e){}return JSON.parse(JSON.stringify(SEED));}
 function normaliza(){
@@ -514,8 +523,55 @@ function migra(){
   STATE.schema=dest;
 }
 function save(){
+  STATE._ts=Date.now();
   try{localStorage.setItem(KEY,JSON.stringify(STATE));}catch(e){}
-  if(DBREF&&FBLISTO){DBREF.set(STATE).then(()=>setSync("guardado en la nube")).catch(()=>setSync("sin conexión — guardado local",true));}
+  if(!(DBREF&&FBLISTO))return;
+  const mio=STATE._ts;
+  // Transaccion en vez de set(): Firebase nos entrega lo que hay en la nube y solo
+  // escribe si devolvemos algo. Si lo remoto es mas nuevo que lo que cargamos,
+  // devolvemos undefined y la escritura se aborta en lugar de pisar el trabajo ajeno.
+  DBREF.transaction(remoto=>{
+    if(remoto&&remoto._ts&&remoto._ts>VISTO_TS)return;   // abortar
+    return STATE;
+  }).then(res=>{
+    if(!res.committed){
+      setSync("otra sesión guardó algo más nuevo — recargando",true);
+      return DBREF.once('value').then(s=>{
+        const v=s.val();
+        if(v)aplicarRemoto(v);
+        alert("Otra pestaña o equipo guardó cambios más recientes.\n\nSe cargó lo último para no borrarlos. Vuelve a aplicar tu cambio.");
+      });
+    }
+    VISTO_TS=mio; MI_ULTIMO_TS=mio;
+    setSync("guardado en la nube");
+  }).catch(()=>setSync("sin conexión — guardado local",true));
+}
+// Adopta un estado que llego de otra sesion y repinta la vista en curso.
+function aplicarRemoto(v){
+  STATE=v; normaliza(); VISTO_TS=v._ts||0;
+  try{localStorage.setItem(KEY,JSON.stringify(STATE));}catch(e){}
+  // El proyecto abierto pudo haberse borrado en la otra sesion.
+  if(VACT==="proyecto"&&!proy(CUR)){setV("maestro");}
+  else{setV(VACT||"maestro");}
+  setSync("actualizado desde otra sesión");
+}
+// Escucha continua: antes solo se leia una vez al arrancar, asi que una pestana vieja
+// trabajaba a ciegas por horas. Ahora se entera al momento.
+function escucharRemoto(){
+  DBREF.on('value',snap=>{
+    const v=snap.val();
+    if(!v||!v._ts)return;
+    if(v._ts===MI_ULTIMO_TS)return;    // eco de mi propia escritura
+    if(v._ts<=VISTO_TS)return;         // nada mas nuevo que lo que ya tengo
+    // No interrumpir a media captura: si hay un dialogo abierto, esperar a que cierre.
+    const bg=document.getElementById("modalBg");
+    if(bg&&bg.classList.contains("on")){
+      PEND_REMOTO=v;
+      setSync("hay cambios nuevos — cierra el diálogo para verlos",true);
+      return;
+    }
+    aplicarRemoto(v);
+  },()=>setSync("sin conexión — guardado local",true));
 }
 function setSync(txt,warn){const el=document.getElementById("syncf");if(el){el.textContent="Firebase: "+txt;el.style.color=warn?"var(--s-bloq)":"var(--s-term)";}}
 function resetData(){if(confirm("¿Restaurar datos de ejemplo? Se pierden tus cambios (también en la nube)."))
@@ -526,18 +582,23 @@ function bootFirebase(){
     setSync("autenticando…");
     firebase.auth().signInAnonymously().then(()=>{
       // Entorno (sep 2026): SOLO el host publicado usa produccion. Cualquier otro origen
-      // (disco, localhost, data:, un visor, una copia) cae en _test/. La lista es blanca
-      // a proposito: si el origen no se reconoce, el riesgo es no tocar produccion.
-      const FB_ENV=(location.hostname==='lineaitalia-nova.github.io')?'':'_test/';
-      DBREF=firebase.database().ref(FB_ENV+'gestor_pm/state');
+      // (disco, localhost, data:, un visor, una copia) usa el nodo de pruebas. La lista
+      // es blanca a proposito: si el origen no se reconoce, el riesgo es no tocar
+      // produccion.
+      // El nodo de pruebas va DENTRO de gestor_pm, no en un hermano /_test: las reglas
+      // de pm-li-df619 solo autorizan ese subarbol y cualquier ruta fuera responde
+      // PERMISSION_DENIED, con lo que la app caeria a "guardado local" sin sincronizar.
+      const NODO=(location.hostname==='lineaitalia-nova.github.io')?'state':'_test_state';
+      DBREF=firebase.database().ref('gestor_pm/'+NODO);
       setSync("conectando…");
       DBREF.once('value').then(snap=>{
         const v=snap.val();
-        if(v){STATE=v;normaliza();}            // la nube manda
-        else{normaliza();FBLISTO=true;DBREF.set(STATE);} // primera vez: sube la semilla
+        if(v){STATE=v;normaliza();VISTO_TS=v._ts||0;}   // la nube manda
+        else{normaliza();FBLISTO=true;save();}          // primera vez: sube la semilla
         FBLISTO=true;
         setSync("sincronizado");
         renderSidebar();renderMaestro();
+        escucharRemoto();                               // a partir de aqui, en vivo
       }).catch(e=>{FBLISTO=false;normaliza();setSync("sin conexión — guardado local",true);});
     }).catch(e=>{FBLISTO=false;normaliza();setSync("error de acceso — guardado local",true);});
   }catch(e){FBLISTO=false;normaliza();setSync("no disponible — guardado local",true);}
@@ -1239,7 +1300,9 @@ function eliminarActividad(id){
 
 /* ===== MODALES (captura en formulario, no prompts) ===== */
 function openModal(html){$("#modal").innerHTML=html;$("#modalBg").classList.add("on");}
-function closeModal(){$("#modalBg").classList.remove("on");}
+function closeModal(){$("#modalBg").classList.remove("on");
+  // Si llego un cambio de otra sesion mientras el dialogo estaba abierto, aplicarlo ahora.
+  if(PEND_REMOTO){const v=PEND_REMOTO;PEND_REMOTO=null;aplicarRemoto(v);}}
 $("#modalBg").addEventListener("click",e=>{if(e.target.id==="modalBg")closeModal();});
 
 function modalNuevaActividad(fase){
