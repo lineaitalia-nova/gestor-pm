@@ -525,9 +525,10 @@ function bootFirebase(){
     firebase.initializeApp(firebaseConfig);
     setSync("autenticando…");
     firebase.auth().signInAnonymously().then(()=>{
-      // Entorno (sep 2026): desde disco o localhost usa el nodo _test; publicado en
-      // GitHub Pages usa produccion. Evita que una prueba local toque datos reales.
-      const FB_ENV=(location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))?'_test/':'';
+      // Entorno (sep 2026): SOLO el host publicado usa produccion. Cualquier otro origen
+      // (disco, localhost, data:, un visor, una copia) cae en _test/. La lista es blanca
+      // a proposito: si el origen no se reconoce, el riesgo es no tocar produccion.
+      const FB_ENV=(location.hostname==='lineaitalia-nova.github.io')?'':'_test/';
       DBREF=firebase.database().ref(FB_ENV+'gestor_pm/state');
       setSync("conectando…");
       DBREF.once('value').then(snap=>{
