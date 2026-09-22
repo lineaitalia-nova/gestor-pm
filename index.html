@@ -175,6 +175,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 </div>
 <div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
 
+<script src="fallas.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -483,7 +484,7 @@ let DBREF=null, FBLISTO=false;
      PEND_REMOTO   — cambio remoto en espera mientras haya un dialogo abierto          */
 let VISTO_TS=0, MI_ULTIMO_TS=0, PEND_REMOTO=null;
 let STATE=localLoad(); let CUR=null; let SUB="tabla"; let BFILTRO="todas";
-function localLoad(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s);}catch(e){}return JSON.parse(JSON.stringify(SEED));}
+function localLoad(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s);}catch(e){Falla.registrar('localLoad',e);}return JSON.parse(JSON.stringify(SEED));}
 function normaliza(){
   if(!STATE.proyectos)STATE.proyectos=[];
   STATE.proyectos.forEach(p=>{
@@ -524,7 +525,7 @@ function migra(){
 }
 function save(){
   STATE._ts=Date.now();
-  try{localStorage.setItem(KEY,JSON.stringify(STATE));}catch(e){}
+  try{localStorage.setItem(KEY,JSON.stringify(STATE));}catch(e){Falla.critica('guardar tus tareas y proyectos',e);}
   if(!(DBREF&&FBLISTO))return;
   const mio=STATE._ts;
   // Transaccion en vez de set(): Firebase nos entrega lo que hay en la nube y solo
@@ -549,7 +550,7 @@ function save(){
 // Adopta un estado que llego de otra sesion y repinta la vista en curso.
 function aplicarRemoto(v){
   STATE=v; normaliza(); VISTO_TS=v._ts||0;
-  try{localStorage.setItem(KEY,JSON.stringify(STATE));}catch(e){}
+  try{localStorage.setItem(KEY,JSON.stringify(STATE));}catch(e){Falla.critica('aplicar los cambios de otra sesión',e);}
   // El proyecto abierto pudo haberse borrado en la otra sesion.
   if(VACT==="proyecto"&&!proy(CUR)){setV("maestro");}
   else{setV(VACT||"maestro");}
@@ -1484,7 +1485,7 @@ function modalImportar(){
    <div class="actions"><button class="btn-ghost" onclick="exportarJSON()">⬇ Exportar (copiar)</button><button class="btn" onclick="importarJSON()">⬆ Importar</button></div>
    <p style="font-size:11px;color:var(--txt3);margin-top:10px">Importar reemplaza proyectos con el mismo id y agrega los nuevos. Hallazgos también se fusionan.</p>`);
 }
-function exportarJSON(){const t=$("#imp_txt");t.value=JSON.stringify({proyectos:STATE.proyectos,hallazgos:STATE.hallazgos},null,2);t.select();try{document.execCommand("copy");}catch(e){}alert("Estado copiado al cuadro. Cópialo y pégamelo en el chat.");}
+function exportarJSON(){const t=$("#imp_txt");t.value=JSON.stringify({proyectos:STATE.proyectos,hallazgos:STATE.hallazgos},null,2);t.select();try{document.execCommand("copy");}catch(e){Falla.registrar('exportarJSON',e);}alert("Estado copiado al cuadro. Cópialo y pégamelo en el chat.");}
 function importarJSON(){
   let data;try{data=JSON.parse($("#imp_txt").value);}catch(e){alert("El JSON no es válido.");return;}
   let n=0;
