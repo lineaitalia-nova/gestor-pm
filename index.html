@@ -160,6 +160,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
   <div class="side-ws">Muebles Corporativos</div>
   <nav class="side-nav" id="sideNav"></nav>
   <div style="flex:1"></div>
+  <button class="side-imp" onclick="descargarRespaldo()">⬇ Descargar respaldo</button>
   <button class="side-imp" onclick="modalImportar()">⇅ Importar / Exportar</button>
   <button class="side-imp" style="color:var(--txt3)" onclick="resetData()">↺ Restaurar ejemplo</button>
 </aside>
@@ -575,8 +576,8 @@ function escucharRemoto(){
   },()=>setSync("sin conexión — guardado local",true));
 }
 function setSync(txt,warn){const el=document.getElementById("syncf");if(el){el.textContent="Firebase: "+txt;el.style.color=warn?"var(--s-bloq)":"var(--s-term)";}}
-function resetData(){if(confirm("¿Restaurar datos de ejemplo? Se pierden tus cambios (también en la nube)."))
-{STATE=JSON.parse(JSON.stringify(SEED));normaliza();save();setV('maestro');}}
+function resetData(){if(confirm("¿Restaurar datos de ejemplo? Se pierden tus cambios (también en la nube).\n\nAntes se descargará un respaldo de lo actual."))
+{if(!descargarRespaldo("antes-de-restaurar"))return;STATE=JSON.parse(JSON.stringify(SEED));normaliza();save();setV('maestro');}}
 function bootFirebase(){
   try{
     firebase.initializeApp(firebaseConfig);
@@ -1487,7 +1488,20 @@ function modalImportar(){
    <div class="actions"><button class="btn-ghost" onclick="exportarJSON()">⬇ Exportar (copiar)</button><button class="btn" onclick="importarJSON()">⬆ Importar</button></div>
    <p style="font-size:11px;color:var(--txt3);margin-top:10px">Importar reemplaza proyectos con el mismo id y agrega los nuevos. Hallazgos también se fusionan.</p>`);
 }
-function exportarJSON(){const t=$("#imp_txt");t.value=JSON.stringify({proyectos:STATE.proyectos,hallazgos:STATE.hallazgos},null,2);t.select();try{document.execCommand("copy");}catch(e){Falla.registrar('exportarJSON',e);}alert("Estado copiado al cuadro. Cópialo y pégamelo en el chat.");}
+// Respaldo COMPLETO: lo que exportarJSON dejaba fuera (solicitudes y contramedidas) tambien va.
+function datosRespaldo(){return {_app:"gestor-pm",_exportado:new Date().toISOString(),schema:STATE.schema,
+  proyectos:STATE.proyectos,hallazgos:STATE.hallazgos,solicitudes:STATE.solicitudes||[],contramedidas:STATE.contramedidas||{}};}
+function descargarRespaldo(motivo){
+  try{
+    const blob=new Blob([JSON.stringify(datosRespaldo(),null,2)],{type:"application/json"});
+    const a=document.createElement("a");const hh=new Date();
+    a.href=URL.createObjectURL(blob);
+    a.download=`gestor-pm-respaldo-${hoyLocal()}-${String(hh.getHours()).padStart(2,"0")}${String(hh.getMinutes()).padStart(2,"0")}${motivo?"-"+motivo:""}.json`;
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    return true;
+  }catch(e){Falla.critica('descargar el respaldo',e);return false;}
+}
+function exportarJSON(){const t=$("#imp_txt");t.value=JSON.stringify(datosRespaldo(),null,2);t.select();try{document.execCommand("copy");}catch(e){Falla.registrar('exportarJSON',e);}alert("Estado copiado al cuadro. Cópialo y pégamelo en el chat.");}
 function importarJSON(){
   let data;try{data=JSON.parse($("#imp_txt").value);}catch(e){alert("El JSON no es válido.");return;}
   let n=0;
