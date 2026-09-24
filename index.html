@@ -608,6 +608,8 @@ function bootFirebase(){
 /* ===== HELPERS ===== */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// Fecha de hoy en la zona del equipo (YYYY-MM-DD). toISOString() da UTC: despues de las 18:00 en Mexico ya es "manana".
+function hoyLocal(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
 const money0=n=>"$"+Number(n||0).toLocaleString("es-MX",{maximumFractionDigits:0});
 function diasA(f){if(!f)return null;return Math.ceil((new Date(f+"T00:00:00")-new Date(new Date().toDateString()))/86400000);}
 function ava(nombre){const ini=(nombre||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();const col=PERSON_COLOR[nombre]||"#8A90B0";return `<span class="ava" style="background:${col}">${ini}</span>`;}
@@ -893,7 +895,7 @@ function calHoy(){CALREF=new Date();renderProyecto();}
 function subCalendario(p){
   const acts=p.actividades.filter(a=>a.entrega);
   if(!acts.length)return `<div class="board"><div style="padding:20px;color:var(--txt3)">Sin fechas de entrega para mostrar en calendario.</div></div>`;
-  if(!CALREF){const base=acts.map(a=>new Date(a.entrega)).sort((a,b)=>a-b);CALREF=base.find(dt=>dt>=new Date(new Date().toDateString()))||base[0];CALREF=new Date(CALREF.getFullYear(),CALREF.getMonth(),1);}
+  if(!CALREF){const base=acts.map(a=>new Date(a.entrega+"T00:00:00")).sort((a,b)=>a-b);CALREF=base.find(dt=>dt>=new Date(new Date().toDateString()))||base[0];CALREF=new Date(CALREF.getFullYear(),CALREF.getMonth(),1);}
   const y=CALREF.getFullYear(),m=CALREF.getMonth();
   const first=new Date(y,m,1),start=(first.getDay()+6)%7;
   const dias=new Date(y,m+1,0).getDate();
@@ -903,7 +905,7 @@ function subCalendario(p){
   for(let dnum=1;dnum<=dias;dnum++){
     const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(dnum).padStart(2,"0")}`;
     const evs=acts.filter(a=>a.entrega===ds);
-    const isHoy=ds===new Date().toISOString().slice(0,10);
+    const isHoy=ds===hoyLocal();
     cells+=`<div class="cal-cell${isHoy?' hoy':''}"><div class="cal-d">${dnum}</div>${evs.map(a=>`<div class="cal-ev" style="background:${COLOR[a.estado]}1e;color:var(--txt);border-left:3px solid ${COLOR[a.estado]}">${esc(a.actividad)}</div>`).join("")}</div>`;
   }
   return `<div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3 style="text-transform:capitalize">${CALREF.toLocaleDateString("es-MX",{month:"long",year:"numeric"})}</h3>
@@ -1084,7 +1086,7 @@ function subInformes(p){
 function borrarInforme(pid,iid){if(!confirm("¿Eliminar este informe de la bitácora?"))return;
   const p=proy(pid);p.informes=(p.informes||[]).filter(x=>x.id!==iid);save();renderProyecto();}
 function modalNuevoInforme(pid){
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=hoyLocal();
   openModal(`<h3>Registrar informe</h3>
    <label>Fecha</label><input id="ci_f" type="date" value="${hoy}">
    <label>Tipo</label><select id="ci_t"><option>Informe a dirección</option><option>Resumen del día</option><option>Corte de estatus</option><option>Reunión con cliente</option><option>Nota del PM</option></select>
@@ -1099,7 +1101,7 @@ function guardarInforme(pid){
   const t=$("#ci_ti").value.trim();if(!t){alert("Escribe el título");return;}
   const p=proy(pid);p.informes=p.informes||[];
   const av=$("#ci_a").value;
-  p.informes.push({id:"i"+Date.now(),fecha:$("#ci_f").value||new Date().toISOString().slice(0,10),tipo:$("#ci_t").value,
+  p.informes.push({id:"i"+Date.now(),fecha:$("#ci_f").value||hoyLocal(),tipo:$("#ci_t").value,
     titulo:t,avance:av===""?null:Number(av),contenido:$("#ci_c").value.trim(),riesgos:$("#ci_r").value.trim(),acciones:$("#ci_ac").value.trim()});
   save();closeModal();renderProyecto();
 }
@@ -1221,7 +1223,7 @@ function modalNuevoHallazgoProy(pid){
 function guardarHallazgoProy(pid){
   const d=leerHallazgo();if(!d.titulo){alert("Escribe el título");return;}
   const p=proy(pid);if(!STATE.hallazgos)STATE.hallazgos=[];
-  STATE.hallazgos.push(Object.assign({id:"h"+Date.now(),fecha:new Date().toISOString().slice(0,10),proyecto:p.nombre},d));
+  STATE.hallazgos.push(Object.assign({id:"h"+Date.now(),fecha:hoyLocal(),proyecto:p.nombre},d));
   save();closeModal();renderProyecto();
 }
 function modalEditarHallazgo(hid){
@@ -1447,7 +1449,7 @@ function modalNuevoHallazgo(){
 }
 function guardarHallazgo(){
   const t=$("#h_t").value.trim();if(!t){alert("Escribe el título");return;}
-  STATE.hallazgos.push({id:"h"+Date.now(),fecha:new Date().toISOString().slice(0,10),proyecto:$("#h_p").value,titulo:t,detalle:$("#h_d").value,fam:$("#h_f").value,resp:$("#h_r").value,recurrente:false,impacto:$("#h_i").value,estatus:"abierto"});
+  STATE.hallazgos.push({id:"h"+Date.now(),fecha:hoyLocal(),proyecto:$("#h_p").value,titulo:t,detalle:$("#h_d").value,fam:$("#h_f").value,resp:$("#h_r").value,recurrente:false,impacto:$("#h_i").value,estatus:"abierto"});
   save();closeModal();renderBitacora();
 }
 
@@ -1473,7 +1475,7 @@ function modalNuevaSolicitud(){
 function guardarSolicitud(){
   const t=$("#s_t").value.trim();if(!t){alert("Escribe el título");return;}
   if(!STATE.solicitudes)STATE.solicitudes=[];
-  STATE.solicitudes.push({id:"s"+Date.now(),titulo:t,desc:$("#s_d").value,de:$("#s_de").value||"—",fecha:new Date().toISOString().slice(0,10),estatus:"pendiente"});
+  STATE.solicitudes.push({id:"s"+Date.now(),titulo:t,desc:$("#s_d").value,de:$("#s_de").value||"—",fecha:hoyLocal(),estatus:"pendiente"});
   save();closeModal();renderSolicitudes();
 }
 
