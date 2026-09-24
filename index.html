@@ -160,6 +160,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
   <div class="side-ws">Muebles Corporativos</div>
   <nav class="side-nav" id="sideNav"></nav>
   <div style="flex:1"></div>
+  <button class="side-imp" onclick="descargarRespaldo()">⬇ Descargar respaldo</button>
   <button class="side-imp" onclick="modalImportar()">⇅ Importar / Exportar</button>
   <button class="side-imp" style="color:var(--txt3)" onclick="resetData()">↺ Restaurar ejemplo</button>
 </aside>
@@ -175,6 +176,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 </div>
 <div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
 
+<script src="fallas.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -482,8 +484,19 @@ let DBREF=null, FBLISTO=false;
      MI_ULTIMO_TS  — para reconocer el eco de mis propias escrituras en el listener
      PEND_REMOTO   — cambio remoto en espera mientras haya un dialogo abierto          */
 let VISTO_TS=0, MI_ULTIMO_TS=0, PEND_REMOTO=null;
-let STATE=localLoad(); let CUR=null; let SUB="tabla"; let BFILTRO="todas";
-function localLoad(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s);}catch(e){}return JSON.parse(JSON.stringify(SEED));}
+/* Cambios sin subir (sep 2026). Sin conexion, Firebase no rechaza la escritura: la deja en
+   espera, y si se recarga la pagina se pierde; al arrancar "la nube manda" y lo local se
+   descartaba en silencio. Ahora cada guardado marca "pendiente" y solo la confirmacion de
+   la nube la quita. Al arrancar o reconectar, si hay pendiente, se decide sin perder nada. */
+const KEY_PEND=KEY+"_pendiente";
+let CONECTADO=true;       // lo actualiza .info/connected
+const MIS_TS=new Set();   // sellos que escribio esta pestana: su eco no es "cambio de otro"
+function miTs(ts){MIS_TS.add(ts);if(MIS_TS.size>50)MIS_TS.delete(MIS_TS.values().next().value);}
+function hayPendiente(){try{return localStorage.getItem(KEY_PEND)==="1";}catch(e){return false;}}
+function marcarPendiente(si){try{si?localStorage.setItem(KEY_PEND,"1"):localStorage.removeItem(KEY_PEND);}catch(e){Falla.registrar('marcar pendiente',e);}}
+const fechaHora=ts=>ts?new Date(ts).toLocaleString("es-MX",{dateStyle:"medium",timeStyle:"short"}):"—";
+let STATE=localLoad(); let CUR=null; let SUB="tabla"; let BFILTRO="todas"; let VERCERR=false;
+function localLoad(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s);}catch(e){Falla.registrar('localLoad',e);}return JSON.parse(JSON.stringify(SEED));}
 function normaliza(){
   if(!STATE.proyectos)STATE.proyectos=[];
   STATE.proyectos.forEach(p=>{
@@ -503,6 +516,8 @@ function normaliza(){
 function migra(){
   const dest=Number(SEED.schema||1);
   if(Number(STATE.schema||0)>=dest)return;
+  // Copia del estado tal como estaba antes de migrar, por si algo sale mal.
+  try{localStorage.setItem(KEY+"_premigra",JSON.stringify(STATE));}catch(e){Falla.registrar('respaldo previo a migrar',e);}
   SEED.proyectos.forEach(sp=>{
     const p=STATE.proyectos.find(x=>x.id===sp.id);
     if(!p)return;
@@ -510,12 +525,11 @@ function migra(){
       p.concentrado=JSON.parse(JSON.stringify(sp.concentrado));
     if(sp.informes&&sp.informes.length&&!p.informes.length)
       p.informes=JSON.parse(JSON.stringify(sp.informes));
-    if(sp.corte)p.corte=sp.corte;
-    if(sp.id==="segmty"){ p.valor=sp.valor; p.inauguracion=sp.inauguracion; p.cliente=sp.cliente;
-      p.actividades=JSON.parse(JSON.stringify(sp.actividades));
-      p.riesgos=JSON.parse(JSON.stringify(sp.riesgos)); }
+    if(sp.corte&&!p.corte)p.corte=sp.corte;
+    // Antes aqui se reemplazaban actividades y riesgos de segmty con la semilla: borraba lo capturado.
   });
   (SEED.hallazgos||[]).forEach(sh=>{
+    if((STATE.hallazgosBorrados||[]).includes(sh.id))return;   // lo borro el usuario: no resembrar
     const ex=STATE.hallazgos.find(h=>h.id===sh.id);
     if(!ex)STATE.hallazgos.push(JSON.parse(JSON.stringify(sh)));
     else{["deteccion","accion","leccion"].forEach(k=>{if(!ex[k])ex[k]=sh[k]||"";});}
@@ -524,32 +538,39 @@ function migra(){
 }
 function save(){
   STATE._ts=Date.now();
-  try{localStorage.setItem(KEY,JSON.stringify(STATE));}catch(e){}
-  if(!(DBREF&&FBLISTO))return;
+  try{localStorage.setItem(KEY,JSON.stringify(STATE));}catch(e){Falla.critica('guardar tus tareas y proyectos',e);}
+  marcarPendiente(true);                 // se quita solo cuando la nube confirma
+  if(!(DBREF&&FBLISTO)){setSync("sin conexión — guardado en este equipo, pendiente de subir",true);return;}
   const mio=STATE._ts;
+  MI_ULTIMO_TS=mio; miTs(mio);           // el listener ve el eco local antes de la confirmacion
+  setSync(CONECTADO?"guardando…":"sin conexión — guardado en este equipo, pendiente de subir",!CONECTADO);
   // Transaccion en vez de set(): Firebase nos entrega lo que hay en la nube y solo
   // escribe si devolvemos algo. Si lo remoto es mas nuevo que lo que cargamos,
   // devolvemos undefined y la escritura se aborta en lugar de pisar el trabajo ajeno.
   DBREF.transaction(remoto=>{
-    if(remoto&&remoto._ts&&remoto._ts>VISTO_TS)return;   // abortar
+    if(remoto&&remoto._ts&&remoto._ts>VISTO_TS&&!MIS_TS.has(remoto._ts))return;   // abortar (salvo que lo nuevo sea mio)
     return STATE;
   }).then(res=>{
     if(!res.committed){
       setSync("otra sesión guardó algo más nuevo — recargando",true);
+      // Lo mio no entra a la nube: bajarlo a archivo antes de reemplazarlo por lo remoto.
+      const bajado=descargarRespaldo("mis-cambios-no-subidos");
       return DBREF.once('value').then(s=>{
         const v=s.val();
         if(v)aplicarRemoto(v);
-        alert("Otra pestaña o equipo guardó cambios más recientes.\n\nSe cargó lo último para no borrarlos. Vuelve a aplicar tu cambio.");
+        marcarPendiente(false);
+        alert("Otra pestaña o equipo guardó cambios más recientes.\n\nSe cargó lo último para no borrarlos. Vuelve a aplicar tu cambio."+(bajado?"\n\nTu versión quedó en un respaldo descargado por si la necesitas.":""));
       });
     }
     VISTO_TS=mio; MI_ULTIMO_TS=mio;
+    if(STATE._ts===mio)marcarPendiente(false);   // si hubo otro guardado despues, sigue pendiente
     setSync("guardado en la nube");
-  }).catch(()=>setSync("sin conexión — guardado local",true));
+  }).catch(()=>setSync("sin conexión — guardado en este equipo, pendiente de subir",true));
 }
 // Adopta un estado que llego de otra sesion y repinta la vista en curso.
 function aplicarRemoto(v){
   STATE=v; normaliza(); VISTO_TS=v._ts||0;
-  try{localStorage.setItem(KEY,JSON.stringify(STATE));}catch(e){}
+  try{localStorage.setItem(KEY,JSON.stringify(STATE));}catch(e){Falla.critica('aplicar los cambios de otra sesión',e);}
   // El proyecto abierto pudo haberse borrado en la otra sesion.
   if(VACT==="proyecto"&&!proy(CUR)){setV("maestro");}
   else{setV(VACT||"maestro");}
@@ -561,8 +582,15 @@ function escucharRemoto(){
   DBREF.on('value',snap=>{
     const v=snap.val();
     if(!v||!v._ts)return;
-    if(v._ts===MI_ULTIMO_TS)return;    // eco de mi propia escritura
+    if(v._ts===MI_ULTIMO_TS||MIS_TS.has(v._ts))return;    // eco de mi propia escritura
     if(v._ts<=VISTO_TS)return;         // nada mas nuevo que lo que ya tengo
+    // Llega algo mas nuevo de otra sesion y yo tengo cambios sin subir: conflicto real.
+    // Se guarda lo mio en archivo antes de adoptar lo remoto.
+    if(hayPendiente()&&STATE._ts&&STATE._ts!==v._ts){
+      descargarRespaldo("cambios-locales-en-conflicto");
+      marcarPendiente(false);
+      setTimeout(()=>alert("Tenías cambios sin subir y otra sesión guardó algo más reciente.\n\nSe cargó la versión de la nube y tus cambios quedaron en un respaldo descargado para que los revises."),50);
+    }
     // No interrumpir a media captura: si hay un dialogo abierto, esperar a que cierre.
     const bg=document.getElementById("modalBg");
     if(bg&&bg.classList.contains("on")){
@@ -574,8 +602,8 @@ function escucharRemoto(){
   },()=>setSync("sin conexión — guardado local",true));
 }
 function setSync(txt,warn){const el=document.getElementById("syncf");if(el){el.textContent="Firebase: "+txt;el.style.color=warn?"var(--s-bloq)":"var(--s-term)";}}
-function resetData(){if(confirm("¿Restaurar datos de ejemplo? Se pierden tus cambios (también en la nube)."))
-{STATE=JSON.parse(JSON.stringify(SEED));normaliza();save();setV('maestro');}}
+function resetData(){if(confirm("¿Restaurar datos de ejemplo? Se pierden tus cambios (también en la nube).\n\nAntes se descargará un respaldo de lo actual."))
+{if(!descargarRespaldo("antes-de-restaurar"))return;STATE=JSON.parse(JSON.stringify(SEED));normaliza();save();setV('maestro');}}
 function bootFirebase(){
   try{
     firebase.initializeApp(firebaseConfig);
@@ -591,14 +619,34 @@ function bootFirebase(){
       const NODO=(location.hostname==='lineaitalia-nova.github.io')?'state':'_test_state';
       DBREF=firebase.database().ref('gestor_pm/'+NODO);
       setSync("conectando…");
+      const LOCAL=STATE;                                // lo que quedo en este equipo
       DBREF.once('value').then(snap=>{
         const v=snap.val();
-        if(v){STATE=v;normaliza();VISTO_TS=v._ts||0;}   // la nube manda
+        const pend=hayPendiente()&&LOCAL&&LOCAL._ts;
+        let subirLocal=false;
+        if(v&&pend&&LOCAL._ts>(v._ts||0)){
+          // Cambios hechos sin conexion, mas nuevos que la nube: preguntar, nunca descartar en silencio.
+          if(confirm(`Tienes cambios guardados en este equipo que no llegaron a la nube (último: ${fechaHora(LOCAL._ts)}).\n\nAceptar = subirlos a la nube\nCancelar = descartarlos y usar la versión de la nube (se descargará un respaldo con tus cambios)`)){
+            subirLocal=true;
+          }else{descargarRespaldo("cambios-locales-descartados");}
+        }else if(v&&pend){
+          // La nube tiene algo mas reciente de otra sesion: se adopta, pero lo mio queda en archivo.
+          descargarRespaldo("cambios-locales-en-conflicto");
+          setTimeout(()=>alert("Tenías cambios sin subir, pero otra sesión guardó algo más reciente en la nube.\n\nSe cargó la versión de la nube y tus cambios quedaron en un respaldo descargado para que los revises."),50);
+        }
+        if(subirLocal){STATE=LOCAL;normaliza();VISTO_TS=v._ts||0;FBLISTO=true;save();}
+        else if(v){STATE=v;normaliza();VISTO_TS=v._ts||0;marcarPendiente(false);}   // la nube manda
         else{normaliza();FBLISTO=true;save();}          // primera vez: sube la semilla
         FBLISTO=true;
-        setSync("sincronizado");
+        if(!subirLocal)setSync("sincronizado");
         renderSidebar();renderMaestro();
         escucharRemoto();                               // a partir de aqui, en vivo
+        // Al recuperar la conexion, subir lo que haya quedado pendiente.
+        firebase.database().ref('.info/connected').on('value',c=>{
+          CONECTADO=c.val()===true;
+          if(CONECTADO){ if(hayPendiente())save(); else setSync("sincronizado"); }
+          else setSync("sin conexión — tus cambios se guardan en este equipo",true);
+        });
       }).catch(e=>{FBLISTO=false;normaliza();setSync("sin conexión — guardado local",true);});
     }).catch(e=>{FBLISTO=false;normaliza();setSync("error de acceso — guardado local",true);});
   }catch(e){FBLISTO=false;normaliza();setSync("no disponible — guardado local",true);}
@@ -607,6 +655,8 @@ function bootFirebase(){
 /* ===== HELPERS ===== */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// Fecha de hoy en la zona del equipo (YYYY-MM-DD). toISOString() da UTC: despues de las 18:00 en Mexico ya es "manana".
+function hoyLocal(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
 const money0=n=>"$"+Number(n||0).toLocaleString("es-MX",{maximumFractionDigits:0});
 function diasA(f){if(!f)return null;return Math.ceil((new Date(f+"T00:00:00")-new Date(new Date().toDateString()))/86400000);}
 function ava(nombre){const ini=(nombre||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();const col=PERSON_COLOR[nombre]||"#8A90B0";return `<span class="ava" style="background:${col}">${ini}</span>`;}
@@ -718,7 +768,9 @@ function renderSidebar(){
     home:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>',
     grid:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
     folder:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
-    inbox:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 13l2-8h12l2 8"/><path d="M4 13v6h16v-6"/><path d="M4 13h5l1 2h4l1-2h5"/></svg>'
+    inbox:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 13l2-8h12l2 8"/><path d="M4 13v6h16v-6"/><path d="M4 13h5l1 2h4l1-2h5"/></svg>',
+    alert:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l9 16H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>',
+    book:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/><path d="M9 7h6"/></svg>'
   };
   const projs=STATE.proyectos.map(p=>`<button class="proj ${VACT==='proyecto'&&CUR===p.id?'on':''}" onclick="abrir('${p.id}')"><span class="ico">${ic.folder}</span>${esc(p.nombre)}</button>`).join("");
   $("#sideNav").innerHTML=`
@@ -727,6 +779,8 @@ function renderSidebar(){
     <div class="subhead">Proyectos</div>
     ${projs}
     <div class="subhead">General</div>
+    <button class="${VACT==='riesgos'?'on':''}" onclick="setV('riesgos')"><span class="ico">${ic.alert}</span>Riesgos</button>
+    <button class="${VACT==='bitacora'?'on':''}" onclick="setV('bitacora')"><span class="ico">${ic.book}</span>Bitácora de hallazgos</button>
     <button class="${VACT==='solicitudes'?'on':''}" onclick="setV('solicitudes')"><span class="ico">${ic.inbox}</span>Solicitudes</button>`;
 }
 
@@ -892,7 +946,7 @@ function calHoy(){CALREF=new Date();renderProyecto();}
 function subCalendario(p){
   const acts=p.actividades.filter(a=>a.entrega);
   if(!acts.length)return `<div class="board"><div style="padding:20px;color:var(--txt3)">Sin fechas de entrega para mostrar en calendario.</div></div>`;
-  if(!CALREF){const base=acts.map(a=>new Date(a.entrega)).sort((a,b)=>a-b);CALREF=base.find(dt=>dt>=new Date(new Date().toDateString()))||base[0];CALREF=new Date(CALREF.getFullYear(),CALREF.getMonth(),1);}
+  if(!CALREF){const base=acts.map(a=>new Date(a.entrega+"T00:00:00")).sort((a,b)=>a-b);CALREF=base.find(dt=>dt>=new Date(new Date().toDateString()))||base[0];CALREF=new Date(CALREF.getFullYear(),CALREF.getMonth(),1);}
   const y=CALREF.getFullYear(),m=CALREF.getMonth();
   const first=new Date(y,m,1),start=(first.getDay()+6)%7;
   const dias=new Date(y,m+1,0).getDate();
@@ -902,7 +956,7 @@ function subCalendario(p){
   for(let dnum=1;dnum<=dias;dnum++){
     const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(dnum).padStart(2,"0")}`;
     const evs=acts.filter(a=>a.entrega===ds);
-    const isHoy=ds===new Date().toISOString().slice(0,10);
+    const isHoy=ds===hoyLocal();
     cells+=`<div class="cal-cell${isHoy?' hoy':''}"><div class="cal-d">${dnum}</div>${evs.map(a=>`<div class="cal-ev" style="background:${COLOR[a.estado]}1e;color:var(--txt);border-left:3px solid ${COLOR[a.estado]}">${esc(a.actividad)}</div>`).join("")}</div>`;
   }
   return `<div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3 style="text-transform:capitalize">${CALREF.toLocaleDateString("es-MX",{month:"long",year:"numeric"})}</h3>
@@ -1083,7 +1137,7 @@ function subInformes(p){
 function borrarInforme(pid,iid){if(!confirm("¿Eliminar este informe de la bitácora?"))return;
   const p=proy(pid);p.informes=(p.informes||[]).filter(x=>x.id!==iid);save();renderProyecto();}
 function modalNuevoInforme(pid){
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=hoyLocal();
   openModal(`<h3>Registrar informe</h3>
    <label>Fecha</label><input id="ci_f" type="date" value="${hoy}">
    <label>Tipo</label><select id="ci_t"><option>Informe a dirección</option><option>Resumen del día</option><option>Corte de estatus</option><option>Reunión con cliente</option><option>Nota del PM</option></select>
@@ -1098,21 +1152,25 @@ function guardarInforme(pid){
   const t=$("#ci_ti").value.trim();if(!t){alert("Escribe el título");return;}
   const p=proy(pid);p.informes=p.informes||[];
   const av=$("#ci_a").value;
-  p.informes.push({id:"i"+Date.now(),fecha:$("#ci_f").value||new Date().toISOString().slice(0,10),tipo:$("#ci_t").value,
+  p.informes.push({id:"i"+Date.now(),fecha:$("#ci_f").value||hoyLocal(),tipo:$("#ci_t").value,
     titulo:t,avance:av===""?null:Number(av),contenido:$("#ci_c").value.trim(),riesgos:$("#ci_r").value.trim(),acciones:$("#ci_ac").value.trim()});
   save();closeModal();renderProyecto();
 }
 /* --- SUB: RIESGOS (del proyecto) --- */
 function subRiesgos(p){
   if(!p.riesgos)p.riesgos=[];
-  const rs=[...p.riesgos].filter(r=>r.estatus!=="cerrado").sort((a,b)=>nivelRiesgo(b)-nivelRiesgo(a));
-  const rows=rs.map(r=>{const n=nivelRiesgo(r);return `<tr class="airow">
-    <td class="grpbar"><span class="gbar" style="background:${nivelColor(n)}"></span></td>
+  const porNivel=(a,b)=>nivelRiesgo(b)-nivelRiesgo(a);
+  const rs=[...p.riesgos].filter(r=>r.estatus!=="cerrado").sort(porNivel);           // abiertos: matriz y conteo
+  const cerr=[...p.riesgos].filter(r=>r.estatus==="cerrado").sort(porNivel);
+  const vis=VERCERR?[...rs,...cerr]:rs;
+  const rows=vis.map(r=>{const n=nivelRiesgo(r);const c=r.estatus==="cerrado";return `<tr class="airow" style="${c?'opacity:.5':''}">
+    <td class="grpbar"><span class="gbar" style="background:${c?'#C4C4C4':nivelColor(n)}"></span></td>
     <td class="cellpad"><span class="actv">${esc(r.desc)}</span></td>
     <td class="cellpad">${esc(r.resp)}</td>
     <td style="text-align:center"><select class="estado" style="background:var(--panel);color:var(--txt);width:56px;margin:9px auto" onchange="updRiesgo('${p.id}','${r.id}','prob',+this.value)">${[1,2,3,4,5].map(v=>`<option ${v===r.prob?'selected':''}>${v}</option>`).join("")}</select></td>
     <td style="text-align:center"><select class="estado" style="background:var(--panel);color:var(--txt);width:56px;margin:9px auto" onchange="updRiesgo('${p.id}','${r.id}','imp',+this.value)">${[1,2,3,4,5].map(v=>`<option ${v===r.imp?'selected':''}>${v}</option>`).join("")}</select></td>
     <td style="text-align:center"><span class="estado" style="background:${nivelColor(n)};color:${(n>=4&&n<8)?'#1C1F3B':'#fff'};display:inline-block;width:auto;min-width:100px;margin:9px auto">${n} · ${nivelTxt(n)}</span></td>
+    <td style="text-align:center"><button class="btn-ghost" style="padding:3px 10px;font-size:11px" onclick="toggleRiesgo('${p.id}','${r.id}')">${c?'Reabrir':'Cerrar'}</button></td>
   </tr>`;}).join("");
   let matriz='<table style="width:auto;margin-top:6px"><tbody>';
   for(let i=5;i>=1;i--){matriz+=`<tr><td style="font-size:10px;color:var(--txt3);padding:2px 6px">${i}</td>`;
@@ -1120,12 +1178,17 @@ function subRiesgos(p){
       matriz+=`<td style="width:36px;height:32px;text-align:center;background:${nivelColor(n)};opacity:${cnt?1:.25};color:#fff;font-weight:700;border:2px solid #fff;border-radius:4px">${cnt||''}</td>`;}
     matriz+='</tr>';}
   matriz+='<tr><td></td>'+[1,2,3,4,5].map(pr=>`<td style="font-size:10px;color:var(--txt3);text-align:center">${pr}</td>`).join("")+'</tr></tbody></table>';
-  return `<div class="board"><div class="board-head"><span class="gc" style="background:#E2445C"></span><h3>Riesgos de ${esc(p.nombre)}</h3><span class="count">${rs.length}</span></div>
-    <table class="tbl"><thead><tr><th style="width:11px"></th><th>Riesgo</th><th>Responsable</th><th style="text-align:center">Prob.</th><th style="text-align:center">Impacto</th><th style="text-align:center;width:120px">Nivel</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="cellpad" style="color:var(--txt3)">Sin riesgos. Registra el primero.</td></tr>'}</tbody></table>
+  return `<div class="board"><div class="board-head"><span class="gc" style="background:#E2445C"></span><h3>Riesgos de ${esc(p.nombre)}</h3><span class="count">${rs.length} abiertos</span>${cerr.length?`<button class="btn-ghost" style="margin-left:auto;padding:4px 11px;font-size:11px" onclick="VERCERR=!VERCERR;renderProyecto()">${VERCERR?'Ocultar':'Ver'} cerrados · ${cerr.length}</button>`:''}</div>
+    <table class="tbl"><thead><tr><th style="width:11px"></th><th>Riesgo</th><th>Responsable</th><th style="text-align:center">Prob.</th><th style="text-align:center">Impacto</th><th style="text-align:center;width:120px">Nivel</th><th style="text-align:center;width:90px"></th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="cellpad" style="color:var(--txt3)">Sin riesgos. Registra el primero.</td></tr>'}</tbody></table>
     <div class="addrow" onclick="modalNuevoRiesgo('${p.id}')">+ Registrar riesgo</div></div>
   <div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Matriz Probabilidad × Impacto</h3></div><div style="padding:14px 18px"><div style="font-size:11px;color:var(--txt3);margin-bottom:4px">Impacto ↑ · Probabilidad →</div>${matriz}</div></div>`;
 }
 function updRiesgo(pid,rid,campo,val){const p=proy(pid);const r=(p.riesgos||[]).find(x=>x.id===rid);if(r){r[campo]=val;save();renderProyecto();}}
+// Cerrar / reabrir. Un riesgo cerrado no se borra: queda como historia del proyecto.
+function toggleRiesgo(pid,rid){const p=proy(pid);const r=p&&(p.riesgos||[]).find(x=>x.id===rid);if(!r)return;
+  if(r.estatus!=="cerrado"&&!confirm(`¿Cerrar el riesgo?\n\n"${r.desc}"`))return;
+  r.estatus=r.estatus==="cerrado"?"abierto":"cerrado";r.cierre=r.estatus==="cerrado"?hoyLocal():null;
+  save();if(VACT==="riesgos")renderRiesgos();else renderProyecto();}
 function modalNuevoRiesgo(pid){
   openModal(`<h3>Registrar riesgo</h3>
    <label>Descripción del riesgo</label><input id="rk_d" placeholder="¿Qué puede salir mal?">
@@ -1220,7 +1283,7 @@ function modalNuevoHallazgoProy(pid){
 function guardarHallazgoProy(pid){
   const d=leerHallazgo();if(!d.titulo){alert("Escribe el título");return;}
   const p=proy(pid);if(!STATE.hallazgos)STATE.hallazgos=[];
-  STATE.hallazgos.push(Object.assign({id:"h"+Date.now(),fecha:new Date().toISOString().slice(0,10),proyecto:p.nombre},d));
+  STATE.hallazgos.push(Object.assign({id:"h"+Date.now(),fecha:hoyLocal(),proyecto:p.nombre},d));
   save();closeModal();renderProyecto();
 }
 function modalEditarHallazgo(hid){
@@ -1228,7 +1291,15 @@ function modalEditarHallazgo(hid){
   openModal(`<h3>Editar hallazgo</h3>
    <label>Fecha</label><input id="h_fe" type="date" value="${esc(h.fecha||"")}">
    ${formHallazgo(h)}
-   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarEdicionHallazgo('${hid}')">Guardar</button></div>`);
+   <div class="actions"><button class="btn-ghost" style="margin-right:auto;color:#E2445C" onclick="eliminarHallazgo('${hid}')">Eliminar</button><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarEdicionHallazgo('${hid}')">Guardar</button></div>`);
+}
+function eliminarHallazgo(hid){
+  const h=(STATE.hallazgos||[]).find(x=>x.id===hid);if(!h)return;
+  if(!confirm(`¿Eliminar el hallazgo?\n\n"${h.titulo}"\n\nNo se puede deshacer. Si ya se atendió, mejor cámbialo a "cerrado" para conservarlo en la bitácora.`))return;
+  STATE.hallazgos=STATE.hallazgos.filter(x=>x.id!==hid);
+  // Recordar el id para que una migracion futura no lo vuelva a sembrar desde los datos de ejemplo.
+  STATE.hallazgosBorrados=[...new Set([...(STATE.hallazgosBorrados||[]),hid])];
+  save();closeModal();if(VACT==="bitacora")renderBitacora();else renderProyecto();
 }
 function guardarEdicionHallazgo(hid){
   const h=(STATE.hallazgos||[]).find(x=>x.id===hid);if(!h)return;
@@ -1364,6 +1435,7 @@ function renderRiesgos(){
     <td class="cellpad" style="text-align:center">${r.prob}</td>
     <td class="cellpad" style="text-align:center">${r.imp}</td>
     <td style="text-align:center;font-weight:700;color:#fff;background:${nivelColor(n)}">${n} · ${nivelTxt(n)}</td>
+    <td style="text-align:center">${(()=>{const pp=STATE.proyectos.find(x=>(x.riesgos||[]).includes(r));return pp?`<button class="btn-ghost" style="padding:3px 10px;font-size:11px" onclick="toggleRiesgo('${pp.id}','${r.id}')">Cerrar</button>`:'';})()}</td>
   </tr>`;}).join("");
   let matriz='<table style="width:auto;margin-top:6px"><tbody>';
   for(let i=5;i>=1;i--){matriz+=`<tr><td style="font-size:10px;color:var(--txt3);padding:2px 6px">${i}</td>`;
@@ -1381,7 +1453,7 @@ function renderRiesgos(){
       <div class="chip"><div class="k">Altos</div><div class="v" style="color:#FDAB3D">${rs.filter(r=>{const n=nivelRiesgo(r);return n>=8&&n<15;}).length}</div></div>
     </div>
     <div class="board"><div class="board-head"><span class="gc" style="background:#E2445C"></span><h3>Registro de riesgos</h3><span class="count">${rs.length}</span></div>
-      <table class="tbl"><thead><tr><th style="width:6px"></th><th>Riesgo</th><th>Responsable</th><th style="text-align:center">Prob.</th><th style="text-align:center">Impacto</th><th style="text-align:center;width:130px">Nivel</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="cellpad" style="color:var(--txt3)">Sin riesgos abiertos.</td></tr>'}</tbody></table>
+      <table class="tbl"><thead><tr><th style="width:6px"></th><th>Riesgo</th><th>Responsable</th><th style="text-align:center">Prob.</th><th style="text-align:center">Impacto</th><th style="text-align:center;width:130px">Nivel</th><th style="width:90px"></th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="cellpad" style="color:var(--txt3)">Sin riesgos abiertos.</td></tr>'}</tbody></table>
     </div>
     <div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Matriz Probabilidad × Impacto</h3></div>
       <div style="padding:14px 18px"><div style="font-size:11px;color:var(--txt3);margin-bottom:4px">Impacto ↑ · Probabilidad →</div>${matriz}</div></div>`;
@@ -1390,7 +1462,8 @@ function renderRiesgos(){
 /* ===== BITÁCORA DE HALLAZGOS (portafolio + Pareto) ===== */
 function renderBitacora(){
   const H=STATE.hallazgos||[];
-  const cnt={A:0,B:0,C:0,D:0};H.forEach(h=>{if(cnt[h.fam]!=null)cnt[h.fam]++;});
+  // Todas las familias definidas (antes A–D fijas: E y F no aparecian en el Pareto global).
+  const cnt=Object.fromEntries(Object.keys(FAMILIAS).map(k=>[k,0]));H.forEach(h=>{if(cnt[h.fam]!=null)cnt[h.fam]++;});
   const total=H.length||1;
   const arr=Object.entries(cnt).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v);
   const max=Math.max(1,...arr.map(a=>a.v));
@@ -1446,7 +1519,7 @@ function modalNuevoHallazgo(){
 }
 function guardarHallazgo(){
   const t=$("#h_t").value.trim();if(!t){alert("Escribe el título");return;}
-  STATE.hallazgos.push({id:"h"+Date.now(),fecha:new Date().toISOString().slice(0,10),proyecto:$("#h_p").value,titulo:t,detalle:$("#h_d").value,fam:$("#h_f").value,resp:$("#h_r").value,recurrente:false,impacto:$("#h_i").value,estatus:"abierto"});
+  STATE.hallazgos.push({id:"h"+Date.now(),fecha:hoyLocal(),proyecto:$("#h_p").value,titulo:t,detalle:$("#h_d").value,fam:$("#h_f").value,resp:$("#h_r").value,recurrente:false,impacto:$("#h_i").value,estatus:"abierto"});
   save();closeModal();renderBitacora();
 }
 
@@ -1472,7 +1545,7 @@ function modalNuevaSolicitud(){
 function guardarSolicitud(){
   const t=$("#s_t").value.trim();if(!t){alert("Escribe el título");return;}
   if(!STATE.solicitudes)STATE.solicitudes=[];
-  STATE.solicitudes.push({id:"s"+Date.now(),titulo:t,desc:$("#s_d").value,de:$("#s_de").value||"—",fecha:new Date().toISOString().slice(0,10),estatus:"pendiente"});
+  STATE.solicitudes.push({id:"s"+Date.now(),titulo:t,desc:$("#s_d").value,de:$("#s_de").value||"—",fecha:hoyLocal(),estatus:"pendiente"});
   save();closeModal();renderSolicitudes();
 }
 
@@ -1484,15 +1557,54 @@ function modalImportar(){
    <div class="actions"><button class="btn-ghost" onclick="exportarJSON()">⬇ Exportar (copiar)</button><button class="btn" onclick="importarJSON()">⬆ Importar</button></div>
    <p style="font-size:11px;color:var(--txt3);margin-top:10px">Importar reemplaza proyectos con el mismo id y agrega los nuevos. Hallazgos también se fusionan.</p>`);
 }
-function exportarJSON(){const t=$("#imp_txt");t.value=JSON.stringify({proyectos:STATE.proyectos,hallazgos:STATE.hallazgos},null,2);t.select();try{document.execCommand("copy");}catch(e){}alert("Estado copiado al cuadro. Cópialo y pégamelo en el chat.");}
+// Respaldo COMPLETO: lo que exportarJSON dejaba fuera (solicitudes y contramedidas) tambien va.
+function datosRespaldo(){return {_app:"gestor-pm",_exportado:new Date().toISOString(),schema:STATE.schema,
+  proyectos:STATE.proyectos,hallazgos:STATE.hallazgos,solicitudes:STATE.solicitudes||[],contramedidas:STATE.contramedidas||{},hallazgosBorrados:STATE.hallazgosBorrados||[]};}
+function descargarRespaldo(motivo){
+  try{
+    const blob=new Blob([JSON.stringify(datosRespaldo(),null,2)],{type:"application/json"});
+    const a=document.createElement("a");const hh=new Date();
+    a.href=URL.createObjectURL(blob);
+    a.download=`gestor-pm-respaldo-${hoyLocal()}-${String(hh.getHours()).padStart(2,"0")}${String(hh.getMinutes()).padStart(2,"0")}${motivo?"-"+motivo:""}.json`;
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    return true;
+  }catch(e){Falla.critica('descargar el respaldo',e);return false;}
+}
+function exportarJSON(){const t=$("#imp_txt");t.value=JSON.stringify(datosRespaldo(),null,2);t.select();try{document.execCommand("copy");}catch(e){Falla.registrar('exportarJSON',e);}alert("Estado copiado al cuadro. Cópialo y pégamelo en el chat.");}
 function importarJSON(){
-  let data;try{data=JSON.parse($("#imp_txt").value);}catch(e){alert("El JSON no es válido.");return;}
+  let data;try{data=JSON.parse($("#imp_txt").value.replace(/^﻿/,""));}catch(e){alert("El JSON no es válido.");return;}
+  // Validar ANTES de tocar nada: un dato mal formado puede romper la pantalla o borrar un proyecto.
+  const errs=[],res=[];
+  if(!Array.isArray(data.proyectos)&&!(data.proyecto&&Array.isArray(data.actividades))&&!Array.isArray(data.hallazgos))
+    errs.push("No trae 'proyectos', 'proyecto + actividades' ni 'hallazgos'.");
+  (Array.isArray(data.proyectos)?data.proyectos:[]).forEach((np,i)=>{
+    if(!np||typeof np.id!=="string"||!np.id){errs.push(`Proyecto #${i+1} sin id.`);return;}
+    if(typeof np.nombre!=="string"||!np.nombre)errs.push(`Proyecto ${np.id} sin nombre.`);
+    ["actividades","riesgos","informes"].forEach(k=>{if(np[k]!=null&&!Array.isArray(np[k]))errs.push(`Proyecto ${np.id}: '${k}' no es una lista.`);});
+    const ex=STATE.proyectos.find(p=>p.id===np.id);
+    res.push(ex?`• Reemplaza "${ex.nombre}": ${(ex.actividades||[]).length} → ${(np.actividades||[]).length} actividades, ${(ex.riesgos||[]).length} → ${(np.riesgos||[]).length} riesgos, ${(ex.informes||[]).length} → ${(np.informes||[]).length} informes`
+               :`• Agrega proyecto nuevo "${np.nombre}"`);
+  });
+  if(Array.isArray(data.hallazgos)){
+    data.hallazgos.forEach(h=>{if(!h||!h.id)errs.push("Hay un hallazgo sin id.");else if(!FAMILIAS[h.fam])errs.push(`Hallazgo ${h.id}: familia '${h.fam}' no existe.`);});
+    const nuevos=data.hallazgos.filter(h=>h&&!STATE.hallazgos.some(x=>x.id===h.id)).length;
+    res.push(`• Hallazgos: ${nuevos} nuevos, ${data.hallazgos.length-nuevos} actualizados`);
+  }
+  if(data.proyecto&&Array.isArray(data.actividades))res.push(`• Agrega ${data.actividades.length} actividades a "${data.proyecto}"`);
+  if(Array.isArray(data.solicitudes))res.push(`• Solicitudes: ${data.solicitudes.length}`);
+  if(data.contramedidas&&typeof data.contramedidas==="object")res.push("• Contramedidas por familia");
+  if(errs.length){alert("No se importó nada. Corrige esto primero:\n\n"+errs.slice(0,12).join("\n"));return;}
+  if(!confirm("Vas a importar:\n\n"+res.join("\n")+"\n\nAntes se descargará un respaldo de lo actual. ¿Continuar?"))return;
+  if(!descargarRespaldo("antes-de-importar")){alert("No se pudo descargar el respaldo previo; no se importó nada.");return;}
   let n=0;
   if(Array.isArray(data.proyectos))data.proyectos.forEach(np=>{const i=STATE.proyectos.findIndex(p=>p.id===np.id);if(i>=0)STATE.proyectos[i]=np;else STATE.proyectos.push(np);n++;});
   else if(data.proyecto&&Array.isArray(data.actividades)){let p=STATE.proyectos.find(x=>x.nombre===data.proyecto);
     if(!p){p={id:"p"+Date.now(),nombre:data.proyecto,cliente:data.cliente||"",valor:data.valor||0,inauguracion:data.inauguracion||"",actividades:[],riesgos:[]};STATE.proyectos.push(p);}
     data.actividades.forEach(a=>p.actividades.push(act(a.fase||"Planeación",a.actividad,a.responsable||a.resp||"Por definir",a.inicio||"",a.entrega||"",a.estado||"No iniciado",a.prioridad)));n++;}
   if(Array.isArray(data.hallazgos)){if(!STATE.hallazgos)STATE.hallazgos=[];data.hallazgos.forEach(h=>{const i=STATE.hallazgos.findIndex(x=>x.id===h.id);if(i>=0)STATE.hallazgos[i]=h;else STATE.hallazgos.push(h);});}
+  if(Array.isArray(data.solicitudes)){if(!STATE.solicitudes)STATE.solicitudes=[];data.solicitudes.forEach(s=>{if(!s||!s.id)return;const i=STATE.solicitudes.findIndex(x=>x.id===s.id);if(i>=0)STATE.solicitudes[i]=s;else STATE.solicitudes.push(s);});}
+  if(data.contramedidas&&typeof data.contramedidas==="object")STATE.contramedidas=Object.assign(STATE.contramedidas||{},data.contramedidas);
+  normaliza();
   save();closeModal();setV("maestro");alert("Importado. Se actualizaron "+n+" proyecto(s).");
 }
 
