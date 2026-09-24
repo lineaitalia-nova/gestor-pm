@@ -126,7 +126,26 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 .modal h3{font-size:17px;font-weight:700;margin-bottom:14px}
 .modal label{display:block;font-size:12px;font-weight:600;color:var(--txt2);margin:10px 0 4px}
 .modal input,.modal select{width:100%;font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
-.modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+/* Fase 2: dialogos largos con scroll, variante ancha y hoja inferior en celular */
+.modal{max-height:calc(100vh - 40px);overflow-y:auto}
+.modal.wide{max-width:760px}
+.modal textarea{width:100%;font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:9px;resize:vertical}
+.rd-sec{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:16px 0 4px;display:flex;align-items:center;gap:8px}
+.rd-sec .hint{font-weight:500;letter-spacing:0;text-transform:none;color:var(--txt3);font-size:11px}
+.rd-row{display:grid;grid-template-columns:1fr 150px 90px 28px;gap:6px;margin-bottom:6px;align-items:center}
+.rd-row.pd{grid-template-columns:1fr 180px 28px}
+.rd-row button{color:var(--txt3);font-size:14px}
+.rd-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rd-add{font-size:12px;font-weight:600;color:var(--accent);padding:4px 0}
+.rd-meta{font-size:11px;color:var(--txt3)}
+@media(max-width:600px){
+  .modal-bg{padding:0;align-items:flex-end}
+  .modal{border-radius:16px 16px 0 0;max-height:94vh;padding:18px}
+  .rd-grid{grid-template-columns:1fr 1fr}
+  .rd-row{grid-template-columns:1fr 1fr 28px}.rd-row input{grid-column:1 / -1}
+  .rd-row.pd{grid-template-columns:1fr 28px}.rd-row.pd input:nth-child(2){grid-column:1}
+}
 .foot{text-align:center;color:var(--txt3);font-size:11px;margin-top:26px;font-family:'DM Mono'}
 .ptabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin:16px 0 18px}
 .ptabs button{font-size:13px;font-weight:600;color:var(--txt2);padding:9px 14px;border-bottom:2px solid transparent;margin-bottom:-1px}
@@ -846,6 +865,10 @@ function renderProyecto(){
    <button class="back" onclick="setV('maestro')">← Tablero maestro</button>
    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
      <div><div class="eyebrow">Proyecto</div><div class="h1">${esc(p.nombre)}</div><p class="sub">${esc(p.cliente)}</p></div>
+     <div style="display:flex;gap:8px;flex-wrap:wrap">
+       <button class="btn" onclick="modalReporteDia('${p.id}')">📝 Reporte del día</button>
+       <button class="btn-ghost" onclick="modalHallazgoRapido('${p.id}')">＋ Hallazgo rápido</button>
+     </div>
    </div>
    <div class="strip">
      <div class="chip"><div class="k">Avance global</div><div class="v">${av}%</div></div>
@@ -1118,7 +1141,10 @@ function subInformes(p){
        ${x.riesgos?`<div style="font-size:11.5px;margin-top:8px;padding:8px 11px;background:#E2445C11;border-left:3px solid #E2445C;border-radius:0 6px 6px 0;line-height:1.5"><b style="color:#E2445C">Riesgos · </b>${esc(x.riesgos)}</div>`:""}
        ${x.acciones?`<div style="font-size:11.5px;margin-top:6px;padding:8px 11px;background:#00A89611;border-left:3px solid #00A896;border-radius:0 6px 6px 0;line-height:1.5"><b style="color:#00A896">Acciones y notas del PM · </b>${esc(x.acciones)}</div>`:""}
      </div>
-     <div style="flex:0 0 30px;text-align:right"><button class="delbtn" title="Eliminar informe" onclick="borrarInforme('${p.id}','${x.id}')">✕</button></div>
+     <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:5px;align-items:flex-end">
+       <button class="btn-ghost" style="padding:3px 9px;font-size:11px" title="Texto para WhatsApp" onclick="modalWhatsApp(textoWhatsApp(proy('${p.id}'),proy('${p.id}').informes.find(i=>i.id==='${x.id}')))">📋 WhatsApp</button>
+       ${x.reporte?`<button class="btn-ghost" style="padding:3px 9px;font-size:11px" onclick="modalReporteDia('${p.id}','${x.id}')">Editar</button>`:""}
+       <button class="delbtn" style="opacity:.6" title="Eliminar informe" onclick="borrarInforme('${p.id}','${x.id}')">✕</button></div>
    </div>`).join("");
   return `<div class="board" style="border:none;box-shadow:none;background:transparent;margin-bottom:6px">
     <p class="sub" style="margin:0">Bitácora de lo que se comunicó y cuándo. Es el rastro de la gestión: cada informe queda fechado con su contenido, los riesgos vigentes en ese momento y las acciones tomadas. Al cierre, este módulo <b>es</b> el expediente del proyecto.</p></div>
@@ -1154,6 +1180,154 @@ function guardarInforme(pid){
   const av=$("#ci_a").value;
   p.informes.push({id:"i"+Date.now(),fecha:$("#ci_f").value||hoyLocal(),tipo:$("#ci_t").value,
     titulo:t,avance:av===""?null:Number(av),contenido:$("#ci_c").value.trim(),riesgos:$("#ci_r").value.trim(),acciones:$("#ci_ac").value.trim()});
+  save();closeModal();renderProyecto();
+}
+
+/* ===== REPORTE DEL DÍA (fase 2) =====
+   Se captura UNA vez aqui y la app arma el texto para WhatsApp: el grupo deja de ser
+   la fuente y pasa a ser solo el canal. Cada hallazgo del reporte entra a la bitacora. */
+const MESES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const fechaCorta=ds=>{const [y,m,d]=String(ds||"").split("-");return d?`${Number(d)}/${MESES[Number(m)-1]}`:ds;};
+// Sedes a partir de las areas del concentrado: "Oaxaca Nivel 1" y "Oaxaca Nivel 2" -> "Oaxaca".
+function sedesDe(p){const s=[];(p.concentrado&&p.concentrado.areas||[]).forEach(a=>{
+  const n=String(a.nombre||"").replace(/\s+(nivel\s*\d+|n\d+|pb|pa|anexo|planta\s+\w+)$/i,"").trim();if(n&&!s.includes(n))s.push(n);});return s;}
+const lineas=t=>String(t||"").split(/\n+/).map(x=>x.replace(/^\s*(?:[-•*]|\d+[.)])\s*/,"").trim()).filter(Boolean);
+const KEY_BORR=pid=>KEY+"_borrador_"+pid;
+
+function filaHz(h){h=h||{};return `<div class="rd-row rd-hz" data-hid="${esc(h.hid||"")}">
+  <input class="hz-t" placeholder="¿Qué se encontró?" value="${esc(h.titulo||"")}">
+  <select class="hz-f">${Object.entries(FAMILIAS).map(([k,f])=>`<option value="${k}" ${k===(h.fam||"A")?"selected":""}>${k} · ${esc(f.nombre.slice(0,22))}</option>`).join("")}</select>
+  <select class="hz-i">${["alto","medio","bajo"].map(x=>`<option ${x===(h.impacto||"medio")?"selected":""}>${x}</option>`).join("")}</select>
+  <button title="Quitar" onclick="this.parentNode.remove();guardaBorrador()">✕</button></div>`;}
+function filaPd(x){x=x||{};return `<div class="rd-row pd rd-pd">
+  <input class="pd-t" placeholder="Pendiente" value="${esc(x.txt||"")}">
+  <input class="pd-r" placeholder="Responsable" value="${esc(x.resp||"")}">
+  <button title="Quitar" onclick="this.parentNode.remove();guardaBorrador()">✕</button></div>`;}
+
+function modalReporteDia(pid,iid){
+  const p=proy(pid);if(!p)return;
+  const prev=iid?(p.informes||[]).find(x=>x.id===iid):null;
+  let r=prev&&prev.reporte?JSON.parse(JSON.stringify(prev.reporte)):null;
+  let fecha=prev?prev.fecha:hoyLocal(),avance=prev&&prev.avance!=null?prev.avance:"",titulo=prev?prev.titulo:"";
+  if(!prev){try{const b=JSON.parse(localStorage.getItem(KEY_BORR(pid))||"null");if(b){r=b.reporte;fecha=b.fecha||fecha;avance=b.avance??"";titulo=b.titulo||"";}}catch(e){Falla.registrar('leer borrador',e);}}
+  r=r||{sede:"",dia:"",dias:"",avance:[],cerrado:[],hallazgos:[],pendientes:[],riesgo:""};
+  const sedes=sedesDe(p);
+  openModal(`<h3>📝 Reporte del día · ${esc(p.nombre)}${prev?' <span class="rd-meta">(editando)</span>':''}</h3>
+   <div class="rd-meta" style="margin:-6px 0 6px">Captúralo aquí una vez; al guardar se arma el texto para WhatsApp y los hallazgos entran a la bitácora.${!prev&&localStorage.getItem(KEY_BORR(pid))?' <b>Se recuperó tu borrador.</b>':''}</div>
+   <div class="rd-grid">
+     <div><label>Fecha</label><input id="rd_f" type="date" value="${esc(fecha)}"></div>
+     <div><label>Sede</label><select id="rd_s"><option value="">General</option>${sedes.map(s=>`<option ${s===r.sede?"selected":""}>${esc(s)}</option>`).join("")}</select></div>
+     <div><label>Día / de</label><div style="display:flex;gap:4px"><input id="rd_d" type="number" min="1" placeholder="2" value="${esc(r.dia)}"><input id="rd_dt" type="number" min="1" placeholder="7" value="${esc(r.dias)}"></div></div>
+     <div><label>Avance %</label><input id="rd_a" type="number" min="0" max="100" placeholder="opcional" value="${esc(avance)}"></div>
+   </div>
+   <label>Título (opcional, se arma solo si lo dejas vacío)</label><input id="rd_ti" value="${esc(titulo)}" placeholder="Ej. Oaxaca día 2 · nivel 3 en armado">
+   <div class="rd-sec">Avance <span class="hint">un punto por renglón</span></div><textarea id="rd_av" rows="3">${esc((r.avance||[]).join("\n"))}</textarea>
+   <div class="rd-sec">Cerrado hoy <span class="hint">un punto por renglón</span></div><textarea id="rd_ce" rows="3">${esc((r.cerrado||[]).join("\n"))}</textarea>
+   <div class="rd-sec">Hallazgos <span class="hint">entran a la bitácora del proyecto</span></div>
+   <div id="rd_hz">${(r.hallazgos||[]).map(filaHz).join("")}</div>
+   <button class="rd-add" onclick="$('#rd_hz').insertAdjacentHTML('beforeend',filaHz());guardaBorrador()">＋ hallazgo</button>
+   <div class="rd-sec">Pendientes 24 h <span class="hint">con responsable</span></div>
+   <div id="rd_pd">${(r.pendientes||[]).map(filaPd).join("")}</div>
+   <button class="rd-add" onclick="$('#rd_pd').insertAdjacentHTML('beforeend',filaPd());guardaBorrador()">＋ pendiente</button>
+   <div class="rd-sec">Riesgo abierto</div><textarea id="rd_ri" rows="2">${esc(r.riesgo||"")}</textarea>
+   <div class="actions">
+     ${!prev?`<button class="btn-ghost" style="margin-right:auto" onclick="descartarBorrador('${pid}')">Limpiar</button>`:""}
+     <button class="btn-ghost" onclick="closeModal()">Cancelar</button>
+     <button class="btn" onclick="guardarReporteDia('${pid}','${iid||""}')">Guardar y ver texto para WhatsApp</button></div>`,true);
+  if(!(r.hallazgos||[]).length)$("#rd_hz").insertAdjacentHTML("beforeend",filaHz());
+  if(!(r.pendientes||[]).length)$("#rd_pd").insertAdjacentHTML("beforeend",filaPd());
+  $("#modal").dataset.borrador=prev?"":pid;
+  $("#modal").oninput=guardaBorrador;$("#modal").onchange=guardaBorrador;
+}
+function leerReporteDia(){
+  const hz=[...document.querySelectorAll("#rd_hz .rd-hz")].map(r=>({hid:r.dataset.hid||"",titulo:r.querySelector(".hz-t").value.trim(),fam:r.querySelector(".hz-f").value,impacto:r.querySelector(".hz-i").value})).filter(h=>h.titulo);
+  const pd=[...document.querySelectorAll("#rd_pd .rd-pd")].map(r=>({txt:r.querySelector(".pd-t").value.trim(),resp:r.querySelector(".pd-r").value.trim()})).filter(x=>x.txt);
+  const a=$("#rd_a").value;
+  return {fecha:$("#rd_f").value||hoyLocal(),avance:a===""?null:Math.max(0,Math.min(100,Number(a))),titulo:$("#rd_ti").value.trim(),
+    reporte:{sede:$("#rd_s").value,dia:$("#rd_d").value,dias:$("#rd_dt").value,avance:lineas($("#rd_av").value),cerrado:lineas($("#rd_ce").value),hallazgos:hz,pendientes:pd,riesgo:$("#rd_ri").value.trim()}};
+}
+// Borrador por proyecto en este navegador: cerrar el dialogo por accidente no pierde lo escrito.
+function guardaBorrador(){const pid=$("#modal").dataset.borrador;if(!pid||!$("#rd_f"))return;
+  try{localStorage.setItem(KEY_BORR(pid),JSON.stringify(leerReporteDia()));}catch(e){Falla.registrar('guardar borrador',e);}}
+function descartarBorrador(pid){if(!confirm("¿Borrar lo capturado en este reporte?"))return;
+  try{localStorage.removeItem(KEY_BORR(pid));}catch(e){}modalReporteDia(pid);}
+function guardarReporteDia(pid,iid){
+  const p=proy(pid);const d=leerReporteDia(),r=d.reporte;
+  if(!r.avance.length&&!r.cerrado.length&&!r.hallazgos.length&&!r.pendientes.length&&!r.riesgo){alert("El reporte está vacío.");return;}
+  if(!STATE.hallazgos)STATE.hallazgos=[];
+  // Hallazgos nuevos -> bitacora; los ya registrados (editando) solo actualizan titulo/familia/impacto.
+  r.hallazgos.forEach((h,i)=>{
+    const ex=h.hid&&STATE.hallazgos.find(x=>x.id===h.hid);
+    if(ex){ex.titulo=h.titulo;ex.fam=h.fam;ex.impacto=h.impacto;return;}
+    h.hid="h"+Date.now()+"_"+i;
+    STATE.hallazgos.push({id:h.hid,fecha:d.fecha,proyecto:p.nombre,titulo:h.titulo,detalle:"Registrado desde el reporte del día.",deteccion:"",accion:"",leccion:"",
+      fam:h.fam,resp:"",impacto:h.impacto,estatus:"abierto",recurrente:false,sede:r.sede||"",momento:r.sede?"en sitio":"",origen:"reporte del día"});
+  });
+  const titulo=d.titulo||[r.sede||p.nombre,r.dia?`día ${r.dia}${r.dias?" de "+r.dias:""}`:"",r.avance[0]||r.cerrado[0]||""].filter(Boolean).join(" · ").slice(0,120);
+  const inf={id:iid||("i"+Date.now()),fecha:d.fecha,tipo:"Resumen del día",titulo,avance:d.avance,
+    contenido:[r.avance.join(". "),r.cerrado.length?"Cerrado hoy: "+r.cerrado.join(". "):""].filter(Boolean).join("\n"),
+    riesgos:r.riesgo,acciones:[r.hallazgos.length?"Hallazgos: "+r.hallazgos.map(h=>h.titulo).join("; "):"",r.pendientes.length?"Pendientes 24 h: "+r.pendientes.map(x=>x.txt+(x.resp?" — "+x.resp:"")).join("; "):""].filter(Boolean).join("\n"),
+    reporte:r};
+  p.informes=p.informes||[];
+  const i=p.informes.findIndex(x=>x.id===inf.id);if(i>=0)p.informes[i]=inf;else p.informes.push(inf);
+  if(!iid){try{localStorage.removeItem(KEY_BORR(pid));}catch(e){}}
+  save();renderProyecto();modalWhatsApp(textoWhatsApp(p,inf));
+}
+// Texto con formato de WhatsApp (*negritas*), igual a la estructura del reporte del 22-sep.
+function textoWhatsApp(p,x){
+  const r=x.reporte,L=[];
+  const num=a=>a.map((t,i)=>`${i+1}. ${t}`);
+  if(r){
+    L.push(`*Reporte diario · PROYECTO ${String(p.nombre).toUpperCase()}${r.sede?" – "+r.sede.toUpperCase():""}*`);
+    L.push([`Reporte ${fechaCorta(x.fecha)}`,r.dia?`Día ${r.dia}${r.dias?" de "+r.dias:""}`:"",x.avance!=null?`Avance ${x.avance} %`:""].filter(Boolean).join(" · "));
+    if(r.avance.length)L.push("","*AVANCE*",...num(r.avance));
+    if(r.cerrado.length)L.push("","*CERRADO HOY*",...num(r.cerrado));
+    if(r.hallazgos.length)L.push("","*HALLAZGOS*",...r.hallazgos.map(h=>`- ${h.titulo} (Fam ${h.fam} · ${h.impacto})`));
+    if(r.pendientes.length)L.push("","*PENDIENTES 24 HRS*",...r.pendientes.map(t=>`- ${t.txt}${t.resp?" — "+t.resp:""}`));
+    if(r.riesgo)L.push("","*RIESGO ABIERTO*",r.riesgo);
+  }else{ // informes capturados antes de la fase 2
+    L.push(`*${x.tipo} · ${p.nombre}* — ${fechaCorta(x.fecha)}${x.avance!=null?` · Avance ${x.avance} %`:""}`,"",`*${x.titulo}*`);
+    if(x.contenido)L.push("",x.contenido);
+    if(x.riesgos)L.push("","*Riesgos:* "+x.riesgos);
+    if(x.acciones)L.push("","*Acciones:* "+x.acciones);
+  }
+  return L.join("\n");
+}
+function modalWhatsApp(txt){
+  openModal(`<h3>Texto para WhatsApp</h3>
+   <div class="rd-meta" style="margin:-6px 0 8px">Revísalo, cópialo y pégalo en el grupo. Las fotos las sigues mandando por WhatsApp.</div>
+   <textarea id="wa_txt" rows="14" style="font-family:'DM Mono',monospace;font-size:12px">${esc(txt)}</textarea>
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cerrar</button>
+     <a class="btn-ghost" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(txt)}">Abrir WhatsApp</a>
+     <button class="btn" id="wa_btn" onclick="copiarWhatsApp()">📋 Copiar</button></div>`,true);
+}
+function copiarWhatsApp(){
+  const t=$("#wa_txt"),ok=()=>{$("#wa_btn").textContent="✓ Copiado";};
+  if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t.value).then(ok).catch(()=>{t.select();document.execCommand("copy");ok();});
+  else{t.select();try{document.execCommand("copy");ok();}catch(e){Falla.registrar('copiar texto',e);alert("Selecciona el texto y cópialo con Ctrl+C.");}}
+}
+
+/* ===== HALLAZGO RÁPIDO (pensado para el celular en sitio) ===== */
+function modalHallazgoRapido(pid){
+  const p=proy(pid);if(!p)return;const sedes=sedesDe(p);
+  openModal(`<h3>＋ Hallazgo rápido · ${esc(p.nombre)}</h3>
+   <label>¿Qué se encontró?</label><input id="hr_t" placeholder="Ej. 20 sillas no embarcadas">
+   <label>Qué pasó (opcional)</label><textarea id="hr_d" rows="3" placeholder="Detalle breve"></textarea>
+   <div class="rd-grid" style="grid-template-columns:1fr 1fr">
+     <div><label>Sede</label><select id="hr_s"><option value="">General</option>${sedes.map(s=>`<option>${esc(s)}</option>`).join("")}</select></div>
+     <div><label>Dónde se detectó</label><select id="hr_m">${["en planta","en CEDI","antes de embarque","en sitio"].map(m=>`<option>${m}</option>`).join("")}</select></div>
+     <div><label>Familia de causa raíz</label><select id="hr_f">${Object.entries(FAMILIAS).map(([k,f])=>`<option value="${k}">${k} · ${esc(f.nombre)}</option>`).join("")}</select></div>
+     <div><label>Impacto</label><select id="hr_i"><option>alto</option><option selected>medio</option><option>bajo</option></select></div>
+   </div>
+   <div class="rd-meta" style="margin-top:8px">Después lo completas en Hallazgos (cómo se detectó, qué se hizo, lección).</div>
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarHallazgoRapido('${pid}')">Guardar</button></div>`);
+  setTimeout(()=>{const t=$("#hr_t");if(t)t.focus();},50);
+}
+function guardarHallazgoRapido(pid){
+  const p=proy(pid);const t=$("#hr_t").value.trim();if(!t){alert("Escribe qué se encontró");return;}
+  if(!STATE.hallazgos)STATE.hallazgos=[];
+  STATE.hallazgos.push({id:"h"+Date.now(),fecha:hoyLocal(),proyecto:p.nombre,titulo:t,detalle:$("#hr_d").value.trim(),deteccion:"",accion:"",leccion:"",
+    fam:$("#hr_f").value,resp:"",impacto:$("#hr_i").value,estatus:"abierto",recurrente:false,sede:$("#hr_s").value,momento:$("#hr_m").value,origen:"hallazgo rápido"});
   save();closeModal();renderProyecto();
 }
 /* --- SUB: RIESGOS (del proyecto) --- */
@@ -1228,7 +1402,7 @@ function subBitacora(p){
       ${h.deteccion?`<div style="font-size:11px;margin-top:6px;line-height:1.45"><b style="color:var(--txt3)">Cómo se detectó · </b><span style="color:var(--txt2)">${esc(h.deteccion)}</span></div>`:""}
       ${h.accion?`<div style="font-size:11px;margin-top:3px;line-height:1.45"><b style="color:#00A896">Qué se hizo · </b><span style="color:var(--txt2)">${esc(h.accion)}</span></div>`:""}
       ${h.leccion?`<div style="font-size:11px;margin-top:3px;line-height:1.45"><b style="color:var(--accent)">Lección · </b><span style="color:var(--txt2)">${esc(h.leccion)}</span></div>`:""}
-      <div style="font-size:10.5px;color:var(--txt3);margin-top:5px">${esc(h.fecha)} · ${esc(h.resp)}</div>
+      <div style="font-size:10.5px;color:var(--txt3);margin-top:5px">${[h.fecha,h.resp,h.sede,h.momento?"detectado "+h.momento:""].filter(Boolean).map(esc).join(" · ")}</div>
       <button class="btn-ghost" style="padding:2px 9px;font-size:10.5px;margin-top:6px" onclick="modalEditarHallazgo('${h.id}')">Editar</button></td>
     <td style="text-align:center"><span class="pill" style="background:${FAMILIAS[h.fam].color}22;color:${FAMILIAS[h.fam].color}">${h.fam}</span>${h.recurrente?'<div style="font-size:9px;color:#E2445C;font-family:DM Mono;margin-top:3px">RECURRENTE</div>':''}</td>
     <td class="cellpad"><span class="pill ${h.impacto==='alto'?'r':h.impacto==='medio'?'a':'n'}">${h.impacto}</span></td>
@@ -1370,7 +1544,7 @@ function eliminarActividad(id){
 }
 
 /* ===== MODALES (captura en formulario, no prompts) ===== */
-function openModal(html){$("#modal").innerHTML=html;$("#modalBg").classList.add("on");}
+function openModal(html,ancho){const m=$("#modal");m.dataset.borrador="";m.oninput=null;m.onchange=null;m.innerHTML=html;$("#modal").classList.toggle("wide",!!ancho);$("#modal").scrollTop=0;$("#modalBg").classList.add("on");}
 function closeModal(){$("#modalBg").classList.remove("on");
   // Si llego un cambio de otra sesion mientras el dialogo estaba abierto, aplicarlo ahora.
   if(PEND_REMOTO){const v=PEND_REMOTO;PEND_REMOTO=null;aplicarRemoto(v);}}
