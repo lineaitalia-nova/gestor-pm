@@ -765,7 +765,9 @@ function renderSidebar(){
     home:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>',
     grid:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
     folder:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
-    inbox:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 13l2-8h12l2 8"/><path d="M4 13v6h16v-6"/><path d="M4 13h5l1 2h4l1-2h5"/></svg>'
+    inbox:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 13l2-8h12l2 8"/><path d="M4 13v6h16v-6"/><path d="M4 13h5l1 2h4l1-2h5"/></svg>',
+    alert:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l9 16H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>',
+    book:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/><path d="M9 7h6"/></svg>'
   };
   const projs=STATE.proyectos.map(p=>`<button class="proj ${VACT==='proyecto'&&CUR===p.id?'on':''}" onclick="abrir('${p.id}')"><span class="ico">${ic.folder}</span>${esc(p.nombre)}</button>`).join("");
   $("#sideNav").innerHTML=`
@@ -774,6 +776,8 @@ function renderSidebar(){
     <div class="subhead">Proyectos</div>
     ${projs}
     <div class="subhead">General</div>
+    <button class="${VACT==='riesgos'?'on':''}" onclick="setV('riesgos')"><span class="ico">${ic.alert}</span>Riesgos</button>
+    <button class="${VACT==='bitacora'?'on':''}" onclick="setV('bitacora')"><span class="ico">${ic.book}</span>Bitácora de hallazgos</button>
     <button class="${VACT==='solicitudes'?'on':''}" onclick="setV('solicitudes')"><span class="ico">${ic.inbox}</span>Solicitudes</button>`;
 }
 
