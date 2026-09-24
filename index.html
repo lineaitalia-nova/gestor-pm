@@ -489,6 +489,7 @@ let VISTO_TS=0, MI_ULTIMO_TS=0, PEND_REMOTO=null;
    descartaba en silencio. Ahora cada guardado marca "pendiente" y solo la confirmacion de
    la nube la quita. Al arrancar o reconectar, si hay pendiente, se decide sin perder nada. */
 const KEY_PEND=KEY+"_pendiente";
+let CONECTADO=true;       // lo actualiza .info/connected
 const MIS_TS=new Set();   // sellos que escribio esta pestana: su eco no es "cambio de otro"
 function miTs(ts){MIS_TS.add(ts);if(MIS_TS.size>50)MIS_TS.delete(MIS_TS.values().next().value);}
 function hayPendiente(){try{return localStorage.getItem(KEY_PEND)==="1";}catch(e){return false;}}
@@ -542,7 +543,7 @@ function save(){
   if(!(DBREF&&FBLISTO)){setSync("sin conexión — guardado en este equipo, pendiente de subir",true);return;}
   const mio=STATE._ts;
   MI_ULTIMO_TS=mio; miTs(mio);           // el listener ve el eco local antes de la confirmacion
-  setSync("guardando…");
+  setSync(CONECTADO?"guardando…":"sin conexión — guardado en este equipo, pendiente de subir",!CONECTADO);
   // Transaccion en vez de set(): Firebase nos entrega lo que hay en la nube y solo
   // escribe si devolvemos algo. Si lo remoto es mas nuevo que lo que cargamos,
   // devolvemos undefined y la escritura se aborta en lugar de pisar el trabajo ajeno.
@@ -642,7 +643,8 @@ function bootFirebase(){
         escucharRemoto();                               // a partir de aqui, en vivo
         // Al recuperar la conexion, subir lo que haya quedado pendiente.
         firebase.database().ref('.info/connected').on('value',c=>{
-          if(c.val()===true){ if(hayPendiente())save(); else setSync("sincronizado"); }
+          CONECTADO=c.val()===true;
+          if(CONECTADO){ if(hayPendiente())save(); else setSync("sincronizado"); }
           else setSync("sin conexión — tus cambios se guardan en este equipo",true);
         });
       }).catch(e=>{FBLISTO=false;normaliza();setSync("sin conexión — guardado local",true);});
