@@ -504,6 +504,8 @@ function normaliza(){
 function migra(){
   const dest=Number(SEED.schema||1);
   if(Number(STATE.schema||0)>=dest)return;
+  // Copia del estado tal como estaba antes de migrar, por si algo sale mal.
+  try{localStorage.setItem(KEY+"_premigra",JSON.stringify(STATE));}catch(e){Falla.registrar('respaldo previo a migrar',e);}
   SEED.proyectos.forEach(sp=>{
     const p=STATE.proyectos.find(x=>x.id===sp.id);
     if(!p)return;
@@ -511,10 +513,8 @@ function migra(){
       p.concentrado=JSON.parse(JSON.stringify(sp.concentrado));
     if(sp.informes&&sp.informes.length&&!p.informes.length)
       p.informes=JSON.parse(JSON.stringify(sp.informes));
-    if(sp.corte)p.corte=sp.corte;
-    if(sp.id==="segmty"){ p.valor=sp.valor; p.inauguracion=sp.inauguracion; p.cliente=sp.cliente;
-      p.actividades=JSON.parse(JSON.stringify(sp.actividades));
-      p.riesgos=JSON.parse(JSON.stringify(sp.riesgos)); }
+    if(sp.corte&&!p.corte)p.corte=sp.corte;
+    // Antes aqui se reemplazaban actividades y riesgos de segmty con la semilla: borraba lo capturado.
   });
   (SEED.hallazgos||[]).forEach(sh=>{
     const ex=STATE.hallazgos.find(h=>h.id===sh.id);
