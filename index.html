@@ -1503,13 +1503,39 @@ function descargarRespaldo(motivo){
 }
 function exportarJSON(){const t=$("#imp_txt");t.value=JSON.stringify(datosRespaldo(),null,2);t.select();try{document.execCommand("copy");}catch(e){Falla.registrar('exportarJSON',e);}alert("Estado copiado al cuadro. Cópialo y pégamelo en el chat.");}
 function importarJSON(){
-  let data;try{data=JSON.parse($("#imp_txt").value);}catch(e){alert("El JSON no es válido.");return;}
+  let data;try{data=JSON.parse($("#imp_txt").value.replace(/^﻿/,""));}catch(e){alert("El JSON no es válido.");return;}
+  // Validar ANTES de tocar nada: un dato mal formado puede romper la pantalla o borrar un proyecto.
+  const errs=[],res=[];
+  if(!Array.isArray(data.proyectos)&&!(data.proyecto&&Array.isArray(data.actividades))&&!Array.isArray(data.hallazgos))
+    errs.push("No trae 'proyectos', 'proyecto + actividades' ni 'hallazgos'.");
+  (Array.isArray(data.proyectos)?data.proyectos:[]).forEach((np,i)=>{
+    if(!np||typeof np.id!=="string"||!np.id){errs.push(`Proyecto #${i+1} sin id.`);return;}
+    if(typeof np.nombre!=="string"||!np.nombre)errs.push(`Proyecto ${np.id} sin nombre.`);
+    ["actividades","riesgos","informes"].forEach(k=>{if(np[k]!=null&&!Array.isArray(np[k]))errs.push(`Proyecto ${np.id}: '${k}' no es una lista.`);});
+    const ex=STATE.proyectos.find(p=>p.id===np.id);
+    res.push(ex?`• Reemplaza "${ex.nombre}": ${(ex.actividades||[]).length} → ${(np.actividades||[]).length} actividades, ${(ex.riesgos||[]).length} → ${(np.riesgos||[]).length} riesgos, ${(ex.informes||[]).length} → ${(np.informes||[]).length} informes`
+               :`• Agrega proyecto nuevo "${np.nombre}"`);
+  });
+  if(Array.isArray(data.hallazgos)){
+    data.hallazgos.forEach(h=>{if(!h||!h.id)errs.push("Hay un hallazgo sin id.");else if(!FAMILIAS[h.fam])errs.push(`Hallazgo ${h.id}: familia '${h.fam}' no existe.`);});
+    const nuevos=data.hallazgos.filter(h=>h&&!STATE.hallazgos.some(x=>x.id===h.id)).length;
+    res.push(`• Hallazgos: ${nuevos} nuevos, ${data.hallazgos.length-nuevos} actualizados`);
+  }
+  if(data.proyecto&&Array.isArray(data.actividades))res.push(`• Agrega ${data.actividades.length} actividades a "${data.proyecto}"`);
+  if(Array.isArray(data.solicitudes))res.push(`• Solicitudes: ${data.solicitudes.length}`);
+  if(data.contramedidas&&typeof data.contramedidas==="object")res.push("• Contramedidas por familia");
+  if(errs.length){alert("No se importó nada. Corrige esto primero:\n\n"+errs.slice(0,12).join("\n"));return;}
+  if(!confirm("Vas a importar:\n\n"+res.join("\n")+"\n\nAntes se descargará un respaldo de lo actual. ¿Continuar?"))return;
+  if(!descargarRespaldo("antes-de-importar")){alert("No se pudo descargar el respaldo previo; no se importó nada.");return;}
   let n=0;
   if(Array.isArray(data.proyectos))data.proyectos.forEach(np=>{const i=STATE.proyectos.findIndex(p=>p.id===np.id);if(i>=0)STATE.proyectos[i]=np;else STATE.proyectos.push(np);n++;});
   else if(data.proyecto&&Array.isArray(data.actividades)){let p=STATE.proyectos.find(x=>x.nombre===data.proyecto);
     if(!p){p={id:"p"+Date.now(),nombre:data.proyecto,cliente:data.cliente||"",valor:data.valor||0,inauguracion:data.inauguracion||"",actividades:[],riesgos:[]};STATE.proyectos.push(p);}
     data.actividades.forEach(a=>p.actividades.push(act(a.fase||"Planeación",a.actividad,a.responsable||a.resp||"Por definir",a.inicio||"",a.entrega||"",a.estado||"No iniciado",a.prioridad)));n++;}
   if(Array.isArray(data.hallazgos)){if(!STATE.hallazgos)STATE.hallazgos=[];data.hallazgos.forEach(h=>{const i=STATE.hallazgos.findIndex(x=>x.id===h.id);if(i>=0)STATE.hallazgos[i]=h;else STATE.hallazgos.push(h);});}
+  if(Array.isArray(data.solicitudes)){if(!STATE.solicitudes)STATE.solicitudes=[];data.solicitudes.forEach(s=>{if(!s||!s.id)return;const i=STATE.solicitudes.findIndex(x=>x.id===s.id);if(i>=0)STATE.solicitudes[i]=s;else STATE.solicitudes.push(s);});}
+  if(data.contramedidas&&typeof data.contramedidas==="object")STATE.contramedidas=Object.assign(STATE.contramedidas||{},data.contramedidas);
+  normaliza();
   save();closeModal();setV("maestro");alert("Importado. Se actualizaron "+n+" proyecto(s).");
 }
 
