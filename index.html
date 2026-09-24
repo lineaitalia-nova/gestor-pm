@@ -1437,7 +1437,8 @@ function renderRiesgos(){
 /* ===== BITÁCORA DE HALLAZGOS (portafolio + Pareto) ===== */
 function renderBitacora(){
   const H=STATE.hallazgos||[];
-  const cnt={A:0,B:0,C:0,D:0};H.forEach(h=>{if(cnt[h.fam]!=null)cnt[h.fam]++;});
+  // Todas las familias definidas (antes A–D fijas: E y F no aparecian en el Pareto global).
+  const cnt=Object.fromEntries(Object.keys(FAMILIAS).map(k=>[k,0]));H.forEach(h=>{if(cnt[h.fam]!=null)cnt[h.fam]++;});
   const total=H.length||1;
   const arr=Object.entries(cnt).map(([k,v])=>({k,v})).sort((a,b)=>b.v-a.v);
   const max=Math.max(1,...arr.map(a=>a.v));
