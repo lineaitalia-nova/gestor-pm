@@ -494,7 +494,7 @@ function miTs(ts){MIS_TS.add(ts);if(MIS_TS.size>50)MIS_TS.delete(MIS_TS.values()
 function hayPendiente(){try{return localStorage.getItem(KEY_PEND)==="1";}catch(e){return false;}}
 function marcarPendiente(si){try{si?localStorage.setItem(KEY_PEND,"1"):localStorage.removeItem(KEY_PEND);}catch(e){Falla.registrar('marcar pendiente',e);}}
 const fechaHora=ts=>ts?new Date(ts).toLocaleString("es-MX",{dateStyle:"medium",timeStyle:"short"}):"—";
-let STATE=localLoad(); let CUR=null; let SUB="tabla"; let BFILTRO="todas";
+let STATE=localLoad(); let CUR=null; let SUB="tabla"; let BFILTRO="todas"; let VERCERR=false;
 function localLoad(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s);}catch(e){Falla.registrar('localLoad',e);}return JSON.parse(JSON.stringify(SEED));}
 function normaliza(){
   if(!STATE.proyectos)STATE.proyectos=[];
@@ -528,6 +528,7 @@ function migra(){
     // Antes aqui se reemplazaban actividades y riesgos de segmty con la semilla: borraba lo capturado.
   });
   (SEED.hallazgos||[]).forEach(sh=>{
+    if((STATE.hallazgosBorrados||[]).includes(sh.id))return;   // lo borro el usuario: no resembrar
     const ex=STATE.hallazgos.find(h=>h.id===sh.id);
     if(!ex)STATE.hallazgos.push(JSON.parse(JSON.stringify(sh)));
     else{["deteccion","accion","leccion"].forEach(k=>{if(!ex[k])ex[k]=sh[k]||"";});}
@@ -1156,14 +1157,18 @@ function guardarInforme(pid){
 /* --- SUB: RIESGOS (del proyecto) --- */
 function subRiesgos(p){
   if(!p.riesgos)p.riesgos=[];
-  const rs=[...p.riesgos].filter(r=>r.estatus!=="cerrado").sort((a,b)=>nivelRiesgo(b)-nivelRiesgo(a));
-  const rows=rs.map(r=>{const n=nivelRiesgo(r);return `<tr class="airow">
-    <td class="grpbar"><span class="gbar" style="background:${nivelColor(n)}"></span></td>
+  const porNivel=(a,b)=>nivelRiesgo(b)-nivelRiesgo(a);
+  const rs=[...p.riesgos].filter(r=>r.estatus!=="cerrado").sort(porNivel);           // abiertos: matriz y conteo
+  const cerr=[...p.riesgos].filter(r=>r.estatus==="cerrado").sort(porNivel);
+  const vis=VERCERR?[...rs,...cerr]:rs;
+  const rows=vis.map(r=>{const n=nivelRiesgo(r);const c=r.estatus==="cerrado";return `<tr class="airow" style="${c?'opacity:.5':''}">
+    <td class="grpbar"><span class="gbar" style="background:${c?'#C4C4C4':nivelColor(n)}"></span></td>
     <td class="cellpad"><span class="actv">${esc(r.desc)}</span></td>
     <td class="cellpad">${esc(r.resp)}</td>
     <td style="text-align:center"><select class="estado" style="background:var(--panel);color:var(--txt);width:56px;margin:9px auto" onchange="updRiesgo('${p.id}','${r.id}','prob',+this.value)">${[1,2,3,4,5].map(v=>`<option ${v===r.prob?'selected':''}>${v}</option>`).join("")}</select></td>
     <td style="text-align:center"><select class="estado" style="background:var(--panel);color:var(--txt);width:56px;margin:9px auto" onchange="updRiesgo('${p.id}','${r.id}','imp',+this.value)">${[1,2,3,4,5].map(v=>`<option ${v===r.imp?'selected':''}>${v}</option>`).join("")}</select></td>
     <td style="text-align:center"><span class="estado" style="background:${nivelColor(n)};color:${(n>=4&&n<8)?'#1C1F3B':'#fff'};display:inline-block;width:auto;min-width:100px;margin:9px auto">${n} · ${nivelTxt(n)}</span></td>
+    <td style="text-align:center"><button class="btn-ghost" style="padding:3px 10px;font-size:11px" onclick="toggleRiesgo('${p.id}','${r.id}')">${c?'Reabrir':'Cerrar'}</button></td>
   </tr>`;}).join("");
   let matriz='<table style="width:auto;margin-top:6px"><tbody>';
   for(let i=5;i>=1;i--){matriz+=`<tr><td style="font-size:10px;color:var(--txt3);padding:2px 6px">${i}</td>`;
@@ -1171,12 +1176,17 @@ function subRiesgos(p){
       matriz+=`<td style="width:36px;height:32px;text-align:center;background:${nivelColor(n)};opacity:${cnt?1:.25};color:#fff;font-weight:700;border:2px solid #fff;border-radius:4px">${cnt||''}</td>`;}
     matriz+='</tr>';}
   matriz+='<tr><td></td>'+[1,2,3,4,5].map(pr=>`<td style="font-size:10px;color:var(--txt3);text-align:center">${pr}</td>`).join("")+'</tr></tbody></table>';
-  return `<div class="board"><div class="board-head"><span class="gc" style="background:#E2445C"></span><h3>Riesgos de ${esc(p.nombre)}</h3><span class="count">${rs.length}</span></div>
-    <table class="tbl"><thead><tr><th style="width:11px"></th><th>Riesgo</th><th>Responsable</th><th style="text-align:center">Prob.</th><th style="text-align:center">Impacto</th><th style="text-align:center;width:120px">Nivel</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="cellpad" style="color:var(--txt3)">Sin riesgos. Registra el primero.</td></tr>'}</tbody></table>
+  return `<div class="board"><div class="board-head"><span class="gc" style="background:#E2445C"></span><h3>Riesgos de ${esc(p.nombre)}</h3><span class="count">${rs.length} abiertos</span>${cerr.length?`<button class="btn-ghost" style="margin-left:auto;padding:4px 11px;font-size:11px" onclick="VERCERR=!VERCERR;renderProyecto()">${VERCERR?'Ocultar':'Ver'} cerrados · ${cerr.length}</button>`:''}</div>
+    <table class="tbl"><thead><tr><th style="width:11px"></th><th>Riesgo</th><th>Responsable</th><th style="text-align:center">Prob.</th><th style="text-align:center">Impacto</th><th style="text-align:center;width:120px">Nivel</th><th style="text-align:center;width:90px"></th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="cellpad" style="color:var(--txt3)">Sin riesgos. Registra el primero.</td></tr>'}</tbody></table>
     <div class="addrow" onclick="modalNuevoRiesgo('${p.id}')">+ Registrar riesgo</div></div>
   <div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Matriz Probabilidad × Impacto</h3></div><div style="padding:14px 18px"><div style="font-size:11px;color:var(--txt3);margin-bottom:4px">Impacto ↑ · Probabilidad →</div>${matriz}</div></div>`;
 }
 function updRiesgo(pid,rid,campo,val){const p=proy(pid);const r=(p.riesgos||[]).find(x=>x.id===rid);if(r){r[campo]=val;save();renderProyecto();}}
+// Cerrar / reabrir. Un riesgo cerrado no se borra: queda como historia del proyecto.
+function toggleRiesgo(pid,rid){const p=proy(pid);const r=p&&(p.riesgos||[]).find(x=>x.id===rid);if(!r)return;
+  if(r.estatus!=="cerrado"&&!confirm(`¿Cerrar el riesgo?\n\n"${r.desc}"`))return;
+  r.estatus=r.estatus==="cerrado"?"abierto":"cerrado";r.cierre=r.estatus==="cerrado"?hoyLocal():null;
+  save();if(VACT==="riesgos")renderRiesgos();else renderProyecto();}
 function modalNuevoRiesgo(pid){
   openModal(`<h3>Registrar riesgo</h3>
    <label>Descripción del riesgo</label><input id="rk_d" placeholder="¿Qué puede salir mal?">
@@ -1279,7 +1289,15 @@ function modalEditarHallazgo(hid){
   openModal(`<h3>Editar hallazgo</h3>
    <label>Fecha</label><input id="h_fe" type="date" value="${esc(h.fecha||"")}">
    ${formHallazgo(h)}
-   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarEdicionHallazgo('${hid}')">Guardar</button></div>`);
+   <div class="actions"><button class="btn-ghost" style="margin-right:auto;color:#E2445C" onclick="eliminarHallazgo('${hid}')">Eliminar</button><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarEdicionHallazgo('${hid}')">Guardar</button></div>`);
+}
+function eliminarHallazgo(hid){
+  const h=(STATE.hallazgos||[]).find(x=>x.id===hid);if(!h)return;
+  if(!confirm(`¿Eliminar el hallazgo?\n\n"${h.titulo}"\n\nNo se puede deshacer. Si ya se atendió, mejor cámbialo a "cerrado" para conservarlo en la bitácora.`))return;
+  STATE.hallazgos=STATE.hallazgos.filter(x=>x.id!==hid);
+  // Recordar el id para que una migracion futura no lo vuelva a sembrar desde los datos de ejemplo.
+  STATE.hallazgosBorrados=[...new Set([...(STATE.hallazgosBorrados||[]),hid])];
+  save();closeModal();if(VACT==="bitacora")renderBitacora();else renderProyecto();
 }
 function guardarEdicionHallazgo(hid){
   const h=(STATE.hallazgos||[]).find(x=>x.id===hid);if(!h)return;
@@ -1415,6 +1433,7 @@ function renderRiesgos(){
     <td class="cellpad" style="text-align:center">${r.prob}</td>
     <td class="cellpad" style="text-align:center">${r.imp}</td>
     <td style="text-align:center;font-weight:700;color:#fff;background:${nivelColor(n)}">${n} · ${nivelTxt(n)}</td>
+    <td style="text-align:center">${(()=>{const pp=STATE.proyectos.find(x=>(x.riesgos||[]).includes(r));return pp?`<button class="btn-ghost" style="padding:3px 10px;font-size:11px" onclick="toggleRiesgo('${pp.id}','${r.id}')">Cerrar</button>`:'';})()}</td>
   </tr>`;}).join("");
   let matriz='<table style="width:auto;margin-top:6px"><tbody>';
   for(let i=5;i>=1;i--){matriz+=`<tr><td style="font-size:10px;color:var(--txt3);padding:2px 6px">${i}</td>`;
@@ -1432,7 +1451,7 @@ function renderRiesgos(){
       <div class="chip"><div class="k">Altos</div><div class="v" style="color:#FDAB3D">${rs.filter(r=>{const n=nivelRiesgo(r);return n>=8&&n<15;}).length}</div></div>
     </div>
     <div class="board"><div class="board-head"><span class="gc" style="background:#E2445C"></span><h3>Registro de riesgos</h3><span class="count">${rs.length}</span></div>
-      <table class="tbl"><thead><tr><th style="width:6px"></th><th>Riesgo</th><th>Responsable</th><th style="text-align:center">Prob.</th><th style="text-align:center">Impacto</th><th style="text-align:center;width:130px">Nivel</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="cellpad" style="color:var(--txt3)">Sin riesgos abiertos.</td></tr>'}</tbody></table>
+      <table class="tbl"><thead><tr><th style="width:6px"></th><th>Riesgo</th><th>Responsable</th><th style="text-align:center">Prob.</th><th style="text-align:center">Impacto</th><th style="text-align:center;width:130px">Nivel</th><th style="width:90px"></th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="cellpad" style="color:var(--txt3)">Sin riesgos abiertos.</td></tr>'}</tbody></table>
     </div>
     <div class="board"><div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Matriz Probabilidad × Impacto</h3></div>
       <div style="padding:14px 18px"><div style="font-size:11px;color:var(--txt3);margin-bottom:4px">Impacto ↑ · Probabilidad →</div>${matriz}</div></div>`;
@@ -1538,7 +1557,7 @@ function modalImportar(){
 }
 // Respaldo COMPLETO: lo que exportarJSON dejaba fuera (solicitudes y contramedidas) tambien va.
 function datosRespaldo(){return {_app:"gestor-pm",_exportado:new Date().toISOString(),schema:STATE.schema,
-  proyectos:STATE.proyectos,hallazgos:STATE.hallazgos,solicitudes:STATE.solicitudes||[],contramedidas:STATE.contramedidas||{}};}
+  proyectos:STATE.proyectos,hallazgos:STATE.hallazgos,solicitudes:STATE.solicitudes||[],contramedidas:STATE.contramedidas||{},hallazgosBorrados:STATE.hallazgosBorrados||[]};}
 function descargarRespaldo(motivo){
   try{
     const blob=new Blob([JSON.stringify(datosRespaldo(),null,2)],{type:"application/json"});
