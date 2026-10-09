@@ -859,13 +859,12 @@ function renderMaestro(){
 function renderProyecto(){
   const p=proy(CUR);if(!p)return;
   const av=avanceProy(p),d=diasA(p.inauguracion);
-  const tabs=[["tabla","Tabla principal"],["concentrado","Concentrado"],["gantt","Gantt"],["ganttsede","Gantt por sede"],["kanban","Kanban"],["calendario","Calendario"],["riesgos","Riesgos"],["bitacora","Hallazgos"],["informes","Informes"],["dashboard","Dashboard"]];
+  const tabs=[["tabla","Tabla principal"],["concentrado","Concentrado"],["gantt","Gantt"],["kanban","Kanban"],["calendario","Calendario"],["riesgos","Riesgos"],["bitacora","Hallazgos"],["informes","Informes"],["dashboard","Dashboard"]];
   let body="";
   if(SUB==="concentrado")body=subConcentrado(p);
   else if(SUB==="informes")body=subInformes(p);
   else if(SUB==="tabla")body=subTabla(p);
   else if(SUB==="gantt")body=subGantt(p);
-  else if(SUB==="ganttsede")body=subGanttSede(p);
   else if(SUB==="kanban")body=subKanban(p);
   else if(SUB==="calendario")body=subCalendario(p);
   else if(SUB==="riesgos")body=subRiesgos(p);
@@ -929,6 +928,7 @@ function subTabla(p){
 
 /* --- SUB: GANTT --- */
 function subGantt(p){
+  if(p.actividades.some(a=>a.sede))return subGanttSede(p);   // con sedes: una fila por sede; sin sedes: el Gantt por actividad de siempre
   const acts=actsOrdenadas(p).filter(a=>a.inicio&&a.entrega);
   if(!acts.length)return `<div class="board"><div style="padding:20px;color:var(--txt3)">Agrega fechas de inicio y entrega a las actividades para ver el Gantt.</div></div>`;
   const min=new Date(Math.min(...acts.map(a=>+new Date(a.inicio))));
@@ -957,15 +957,15 @@ function subGantt(p){
     </div></div>`+leyenda();
 }
 
-/* --- SUB: GANTT POR SEDE (oct 2026) ---
+/* --- GANTT POR SEDE (oct 2026) ---
+   Lo usa subGantt() cuando el proyecto tiene al menos una actividad con sede; si no, se ve el Gantt por actividad.
    Una fila por sede (campo opcional `sede` de la actividad), con segmentos de color por fase,
    % real a la izquierda y fecha / "en N d" a la derecha. Lo que no tiene sede va en "General".
    Solo lee: no cambia ningun dato. El % usa avanceProy(), el mismo criterio que el resto de la app. */
 function sedesProy(p){const s=[...sedesDe(p)];p.actividades.forEach(a=>{if(a.sede&&!s.includes(a.sede))s.push(a.sede);});return s;}
 function optsSede(p,sel){return `<option value="">General (sin sede)</option>`+sedesProy(p).map(s=>`<option ${s===sel?"selected":""}>${esc(s)}</option>`).join("");}
 function subGanttSede(p){
-  const cab=extra=>`<div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Gantt por sede</h3>${extra||""}</div>`;
-  if(!p.actividades.some(a=>a.sede))return `<div class="board">${cab()}<div style="padding:20px;color:var(--txt3);font-size:13px;line-height:1.5">Ninguna actividad tiene sede asignada todavía. Abre una actividad (clic en su nombre en la Tabla principal) y elige su <b>Sede</b> para verla aquí. Lo que no tiene sede se agrupa en «General».</div></div>`;
+  const cab=extra=>`<div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Gantt</h3>${extra||""}</div>`;
   const conFechas=p.actividades.filter(a=>a.inicio&&a.entrega);
   const sinFechas=p.actividades.length-conFechas.length;
   if(!conFechas.length)return `<div class="board">${cab()}<div style="padding:20px;color:var(--txt3)">Agrega fechas de inicio y entrega a las actividades para ver el Gantt.</div></div>`;
