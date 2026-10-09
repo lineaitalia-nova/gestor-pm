@@ -706,10 +706,19 @@ function alertasProy(p){
     al.push({icon:"✅",color:"var(--s-term)",txt:`Todas las actividades terminadas → <b>cerrar el proyecto</b>`});
   return al;
 }
+/* Ocultar la lista de alertas (oct 2026). La preferencia vive solo en este navegador (localStorage),
+   NUNCA dentro de STATE: STATE se sincroniza con Firebase y esto no es un dato del proyecto. Se guarda
+   tambien en memoria para que el boton funcione aunque localStorage este bloqueado. */
+const KEY_ALERTAS=KEY+"_ocultaAlertas";
+let ALERTAS_OCULTAS=(()=>{try{return localStorage.getItem(KEY_ALERTAS)==="1";}catch(e){return false;}})();
+function toggleAlertas(){
+  ALERTAS_OCULTAS=!ALERTAS_OCULTAS;
+  try{ALERTAS_OCULTAS?localStorage.setItem(KEY_ALERTAS,"1"):localStorage.removeItem(KEY_ALERTAS);}catch(e){Falla.registrar('recordar si ocultas las alertas',e);}
+  if(VACT==="maestro")renderMaestro(); else if(VACT==="proyecto")renderProyecto();}
 function renderAlertasCard(alertas,titulo){
   if(!alertas.length)return `<div class="board"><div class="board-head"><span class="gc" style="background:var(--s-term)"></span><h3>⚡ ${titulo}</h3></div><div style="padding:16px 18px;color:var(--txt3);font-size:13px">Sin alertas. Todo en orden.</div></div>`;
   const rows=alertas.map(a=>`<div style="display:flex;gap:11px;align-items:flex-start;padding:11px 18px;border-bottom:1px solid var(--line)"><span style="font-size:16px">${a.icon}</span><span style="font-size:13px;color:var(--txt2);line-height:1.4">${a.txt}</span></div>`).join("");
-  return `<div class="board" style="border-left:4px solid var(--s-bloq)"><div class="board-head"><span class="gc" style="background:var(--s-bloq)"></span><h3>⚡ ${titulo}</h3><span class="count">${alertas.length}</span></div>${rows}</div>`;
+  return `<div class="board" style="border-left:4px solid var(--s-bloq)"><div class="board-head"${ALERTAS_OCULTAS?' style="border-bottom:none"':""}><span class="gc" style="background:var(--s-bloq)"></span><h3>⚡ ${titulo}</h3><span class="count">${alertas.length}</span><button class="btn-ghost" style="margin-left:auto;padding:4px 12px;font-size:12px" onclick="toggleAlertas()">${ALERTAS_OCULTAS?"Mostrar":"Ocultar"}</button></div>${ALERTAS_OCULTAS?"":rows}</div>`;
 }
 
 /* ===== DASHBOARD / SEGUIMIENTO SEMANAL ===== */
