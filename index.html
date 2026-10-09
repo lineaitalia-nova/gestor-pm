@@ -1030,8 +1030,17 @@ function subTabla(p){
 }
 
 /* --- SUB: GANTT --- */
+/* Un solo Gantt (oct 2026). Sin sedes: el Gantt por actividad de siempre. Con sedes: interruptor
+   "Por sede / Por actividad" dentro de la misma pestana; por defecto "Por sede". La eleccion solo vive en
+   memoria (como el filtro del Concentrado): no es un dato ni se guarda. */
+let GVISTA="sede";
+function setGVista(v){GVISTA=v;renderProyecto();}
 function subGantt(p){
-  if(p.actividades.some(a=>a.sede))return subGanttSede(p);   // con sedes: una fila por sede; sin sedes: el Gantt por actividad de siempre
+  if(!p.actividades.some(a=>a.sede))return subGanttActs(p);
+  const sw=`<div class="famfilt" style="margin-bottom:12px"><button class="${GVISTA==="sede"?"on":""}" onclick="setGVista('sede')">Por sede</button><button class="${GVISTA==="act"?"on":""}" onclick="setGVista('act')">Por actividad</button></div>`;
+  return sw+(GVISTA==="act"?subGanttActs(p):subGanttSede(p));
+}
+function subGanttActs(p){
   const acts=actsOrdenadas(p).filter(a=>a.inicio&&a.entrega);
   if(!acts.length)return `<div class="board"><div style="padding:20px;color:var(--txt3)">Agrega fechas de inicio y entrega a las actividades para ver el Gantt.</div></div>`;
   const min=new Date(Math.min(...acts.map(a=>+new Date(a.inicio))));
