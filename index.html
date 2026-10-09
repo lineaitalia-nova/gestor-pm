@@ -520,6 +520,7 @@ function normaliza(){
   if(!STATE.proyectos)STATE.proyectos=[];
   STATE.proyectos.forEach(p=>{
     p.actividades=p.actividades||[];p.riesgos=p.riesgos||[];p.informes=p.informes||[];
+    p.alertas=p.alertas||[];p.alertasAck=p.alertasAck||[];
     if(!p.concentrado)p.concentrado={fuente:"",areas:[],conceptos:[]};
     p.concentrado.areas=p.concentrado.areas||[];p.concentrado.conceptos=p.concentrado.conceptos||[];
   });
@@ -693,17 +694,17 @@ function alertasProy(p){
   const al=[];
   // Regla 1: vencida y no terminada -> avisar responsable
   p.actividades.forEach(a=>{const d=diasA(a.entrega);if(a.estado!=="Terminado"&&d!=null&&d<0)
-    al.push({icon:"🔴",color:"var(--s-bloq)",txt:`<b>${esc(a.actividad)}</b> venció hace ${-d}d y no está terminada → avisar a <b>${esc(a.resp)}</b>`});});
+    al.push({icon:"🔴",color:"var(--s-bloq)",txt:`<b>${esc(a.actividad)}</b> venció hace ${-d}d y no está terminada → avisar a <b>${esc(a.resp)}</b>`,k:"r1|"+a.id,firma:String(a.entrega)});});
   // Regla 2: bloqueado -> avisar PM
   p.actividades.forEach(a=>{if(a.estado==="Bloqueado")
-    al.push({icon:"🚫",color:"var(--s-bloq)",txt:`<b>${esc(a.actividad)}</b> está bloqueada → avisar al Project Manager`});});
+    al.push({icon:"🚫",color:"var(--s-bloq)",txt:`<b>${esc(a.actividad)}</b> está bloqueada → avisar al Project Manager`,k:"r2|"+a.id,firma:[a.estado,a.entrega,a.avance].join("|")});});
   // Regla 3: terminada cuya siguiente no ha iniciado -> avisar al siguiente
   const ord=actsOrdenadas(p);
   for(let i=0;i<ord.length-1;i++){if(ord[i].estado==="Terminado"&&ord[i+1].estado==="No iniciado")
-    al.push({icon:"➡️",color:"var(--s-listo)",txt:`Lista <b>${esc(ord[i].actividad)}</b> → arranca la siguiente: <b>${esc(ord[i+1].actividad)}</b> (${esc(ord[i+1].resp)})`});break;}
+    al.push({icon:"➡️",color:"var(--s-listo)",txt:`Lista <b>${esc(ord[i].actividad)}</b> → arranca la siguiente: <b>${esc(ord[i+1].actividad)}</b> (${esc(ord[i+1].resp)})`,k:"r3|"+ord[i].id+"|"+ord[i+1].id,firma:ord[i].estado+"|"+ord[i+1].estado});break;}
   // Regla 4: todo terminado -> cerrar
   if(p.actividades.length&&p.actividades.every(a=>a.estado==="Terminado"))
-    al.push({icon:"✅",color:"var(--s-term)",txt:`Todas las actividades terminadas → <b>cerrar el proyecto</b>`});
+    al.push({icon:"✅",color:"var(--s-term)",txt:`Todas las actividades terminadas → <b>cerrar el proyecto</b>`,k:"r4|"+p.id,firma:String(p.actividades.length)});
   return al;
 }
 /* Ocultar la lista de alertas (oct 2026). La preferencia vive solo en este navegador (localStorage),
@@ -715,11 +716,112 @@ function toggleAlertas(){
   ALERTAS_OCULTAS=!ALERTAS_OCULTAS;
   try{ALERTAS_OCULTAS?localStorage.setItem(KEY_ALERTAS,"1"):localStorage.removeItem(KEY_ALERTAS);}catch(e){Falla.registrar('recordar si ocultas las alertas',e);}
   if(VACT==="maestro")renderMaestro(); else if(VACT==="proyecto")renderProyecto();}
-function renderAlertasCard(alertas,titulo){
-  if(!alertas.length)return `<div class="board"><div class="board-head"><span class="gc" style="background:var(--s-term)"></span><h3>⚡ ${titulo}</h3></div><div style="padding:16px 18px;color:var(--txt3);font-size:13px">Sin alertas. Todo en orden.</div></div>`;
-  const rows=alertas.map(a=>`<div style="display:flex;gap:11px;align-items:flex-start;padding:11px 18px;border-bottom:1px solid var(--line)"><span style="font-size:16px">${a.icon}</span><span style="font-size:13px;color:var(--txt2);line-height:1.4">${a.txt}</span></div>`).join("");
-  return `<div class="board" style="border-left:4px solid var(--s-bloq)"><div class="board-head"${ALERTAS_OCULTAS?' style="border-bottom:none"':""}><span class="gc" style="background:var(--s-bloq)"></span><h3>⚡ ${titulo}</h3><span class="count">${alertas.length}</span><button class="btn-ghost" style="margin-left:auto;padding:4px 12px;font-size:12px" onclick="toggleAlertas()">${ALERTAS_OCULTAS?"Mostrar":"Ocultar"}</button></div>${ALERTAS_OCULTAS?"":rows}</div>`;
+/* ===== ALERTAS EDITABLES (oct 2026) =====
+   Las 4 reglas de alertasProy() no cambian: solo se les agrega una clave (k) y una firma (cambia cuando la
+   actividad cambia). Encima hay dos cosas que SI son datos del proyecto (se guardan y se sincronizan):
+   - p.alertas: alertas manuales (texto, severidad, responsable, fecha limite, abierta/cerrada).
+   - p.alertasAck: acuses de las automaticas ("atendida"). Un acuse deja de valer si llega su fecha o si
+     la firma cambia (p. ej. cambia la fecha de entrega), para no esconder un problema nuevo.
+   Atender una alerta automatica NUNCA modifica la actividad. */
+const SEV_ALERTA={alta:{icon:"🔴",color:"var(--s-bloq)",l:"Alta"},media:{icon:"🟡",color:"var(--s-proc)",l:"Media"},info:{icon:"ℹ️",color:"var(--s-listo)",l:"Info"}};
+let VERATEND=false;
+const BA="padding:2px 9px;font-size:11px;white-space:nowrap";
+function rerenderAlertas(){if(VACT==="maestro")renderMaestro(); else if(VACT==="proyecto")renderProyecto();}
+function toggleVerAtend(){VERATEND=!VERATEND;rerenderAlertas();}
+function venceTxt(l){if(!l)return "";const d=diasA(l);return d==null?"":(d<0?`venció hace ${-d}d`:(d===0?"vence hoy":`vence en ${d}d`));}
+function alertasDe(p){
+  const hoy=hoyLocal(),abiertas=[],cerradas=[];
+  alertasProy(p).forEach(a=>{
+    const ack=(p.alertasAck||[]).find(x=>x.k===a.k);
+    const vigente=!!ack&&ack.firma===a.firma&&(!ack.hasta||ack.hasta>=hoy);
+    (vigente?cerradas:abiertas).push({...a,pid:p.id,tipo:"auto",ack:vigente?ack:null});});
+  (p.alertas||[]).forEach(m=>{
+    const s=SEV_ALERTA[m.sev]||SEV_ALERTA.media,cer=m.estatus==="cerrada";
+    const d=(!cer&&m.limite)?diasA(m.limite):null,ven=(!cer&&m.limite)?venceTxt(m.limite):"";
+    const it={icon:s.icon,color:(d!=null&&d<0)?"var(--s-bloq)":s.color,pid:p.id,tipo:"man",id:m.id,m,
+      txt:`<b>${esc(m.txt)}</b>${m.resp?` → <b>${esc(m.resp)}</b>`:""}${ven?` · <span style="color:${d<0?"var(--s-bloq)":"var(--txt3)"}">${ven}</span>`:""}`};
+    (cer?cerradas:abiertas).push(it);});
+  return {abiertas,cerradas};
 }
+function filaAlerta(a,cerrada){
+  const pid=a.pid;let acc="",nota="";
+  if(a.tipo==="auto"){
+    acc=cerrada?`<button class="btn-ghost" style="${BA}" onclick="reabrirAck('${pid}','${a.k}')">Reabrir</button>`
+               :`<button class="btn-ghost" style="${BA}" onclick="modalAtenderAlerta('${pid}','${a.k}')">✓ Atender</button>`;
+    if(cerrada)nota=`<div style="font-size:11px;color:var(--txt3);margin-top:3px">Atendida${a.ack.hasta?" · reaparece el "+fechaCorta(a.ack.hasta)+" si sigue igual":" · hasta que la actividad cambie"}${a.ack.nota?" · "+esc(a.ack.nota):""}</div>`;
+  }else{
+    acc=(cerrada?`<button class="btn-ghost" style="${BA}" onclick="toggleAlertaMan('${pid}','${a.id}')">Reabrir</button>`
+                :`<button class="btn-ghost" style="${BA}" onclick="toggleAlertaMan('${pid}','${a.id}')">✓ Cerrar</button>`)
+       +`<button class="btn-ghost" style="${BA}" title="Editar" onclick="modalAlerta('${pid}','${a.id}')">✎</button>`
+       +`<button class="btn-ghost" style="${BA}" title="Borrar" onclick="borrarAlertaMan('${pid}','${a.id}')">✕</button>`;
+    if(cerrada)nota=`<div style="font-size:11px;color:var(--txt3);margin-top:3px">Cerrada${a.m.cierre?" el "+fechaCorta(a.m.cierre):""}</div>`;
+  }
+  return `<div style="display:flex;gap:11px;align-items:flex-start;padding:11px 18px;border-bottom:1px solid var(--line)${cerrada?";opacity:.55":""}"><span style="font-size:16px">${a.icon}</span><span style="flex:1;font-size:13px;color:var(--txt2);line-height:1.4">${a.txt}${nota}</span><span style="display:flex;gap:6px;flex-shrink:0">${acc}</span></div>`;
+}
+function renderAlertasCard(abiertas,titulo,cerradas,pid){
+  cerradas=cerradas||[];
+  if(!abiertas.length&&!cerradas.length&&!pid)return `<div class="board"><div class="board-head"><span class="gc" style="background:var(--s-term)"></span><h3>⚡ ${titulo}</h3></div><div style="padding:16px 18px;color:var(--txt3);font-size:13px">Sin alertas. Todo en orden.</div></div>`;
+  const oc=ALERTAS_OCULTAS,col=abiertas.length?"var(--s-bloq)":"var(--s-term)";
+  const cab=`<div class="board-head"${oc?' style="border-bottom:none"':""}><span class="gc" style="background:${col}"></span><h3>⚡ ${titulo}</h3><span class="count">${abiertas.length}</span><button class="btn-ghost" style="margin-left:auto;padding:4px 12px;font-size:12px" onclick="toggleAlertas()">${oc?"Mostrar":"Ocultar"}</button></div>`;
+  let cuerpo="";
+  if(!oc){
+    cuerpo=(abiertas.map(a=>filaAlerta(a,false)).join("")||`<div style="padding:16px 18px;color:var(--txt3);font-size:13px">Sin alertas abiertas. Todo en orden.</div>`)
+      +(cerradas.length?`<div style="padding:8px 18px;border-top:1px solid var(--line)"><a style="cursor:pointer;font-size:12px;color:var(--txt3)" onclick="toggleVerAtend()">${VERATEND?"▾ Ocultar":"▸ Ver"} atendidas y cerradas (${cerradas.length})</a></div>${VERATEND?cerradas.map(a=>filaAlerta(a,true)).join(""):""}`:"")
+      +(pid?`<div class="addrow" onclick="modalAlerta('${pid}')">+ Agregar alerta</div>`:"");
+  }
+  return `<div class="board" style="border-left:4px solid ${col}">${cab}${cuerpo}</div>`;
+}
+function renderAlertasPortafolio(ps){
+  const ab=[],ce=[];
+  ps.forEach(p=>{const r=alertasDe(p),pre=a=>({...a,txt:`<span class="mono" style="color:var(--txt3)">[${esc(p.nombre)}]</span> `+a.txt});
+    r.abiertas.forEach(a=>ab.push(pre(a)));r.cerradas.forEach(a=>ce.push(pre(a)));});
+  return renderAlertasCard(ab,"Alertas y automatizaciones",ce,null);
+}
+function modalAlerta(pid,id){
+  const p=proy(pid);if(!p)return;
+  const m=id?(p.alertas||[]).find(x=>x.id===id):null;if(id&&!m)return;
+  openModal(`<h3>${m?"Editar alerta":"Nueva alerta"}</h3>
+   <label>Qué hay que atender</label><input id="al_t" value="${esc(m?m.txt:"")}" placeholder="Ej. Confirmar fecha de embarque con el cliente">
+   <label>Severidad</label><select id="al_s">${Object.entries(SEV_ALERTA).map(([k,v])=>`<option value="${k}" ${k===(m?m.sev:"media")?"selected":""}>${v.icon} ${v.l}</option>`).join("")}</select>
+   <label>Responsable</label><input id="al_r" value="${esc(m?m.resp:"")}" placeholder="Área o persona">
+   <label>Fecha límite (opcional)</label><input id="al_f" type="date" value="${m&&m.limite?m.limite:""}">
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarAlerta('${pid}','${id||""}')">Guardar</button></div>`);
+}
+function guardarAlerta(pid,id){
+  const t=$("#al_t").value.trim();if(!t){alert("Escribe qué hay que atender");return;}
+  const p=proy(pid);if(!p)return;p.alertas=p.alertas||[];
+  const datos={txt:t,sev:$("#al_s").value,resp:$("#al_r").value.trim(),limite:$("#al_f").value};
+  if(id){const m=p.alertas.find(x=>x.id===id);if(!m)return;Object.assign(m,datos);}
+  else p.alertas.push({id:"al"+Date.now(),...datos,estatus:"abierta",creada:hoyLocal(),cierre:null});
+  save();closeModal();rerenderAlertas();
+}
+// Cerrar / reabrir una alerta manual. No se borra: queda en "atendidas y cerradas".
+function toggleAlertaMan(pid,id){const p=proy(pid);const m=p&&(p.alertas||[]).find(x=>x.id===id);if(!m)return;
+  if(m.estatus!=="cerrada"&&!confirm(`¿Cerrar la alerta?\n\n"${m.txt}"`))return;
+  m.estatus=m.estatus==="cerrada"?"abierta":"cerrada";m.cierre=m.estatus==="cerrada"?hoyLocal():null;
+  save();rerenderAlertas();}
+function borrarAlertaMan(pid,id){const p=proy(pid);const m=p&&(p.alertas||[]).find(x=>x.id===id);if(!m)return;
+  if(!confirm(`¿Borrar la alerta?\n\n"${m.txt}"\n\nNo se puede deshacer.`))return;
+  p.alertas=p.alertas.filter(x=>x.id!==id);save();rerenderAlertas();}
+function modalAtenderAlerta(pid,k){
+  const p=proy(pid);if(!p)return;const a=alertasProy(p).find(x=>x.k===k);if(!a)return;
+  const d=new Date();d.setDate(d.getDate()+7);
+  const sug=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  openModal(`<h3>Atender alerta</h3>
+   <p class="note" style="margin:0 0 10px">${a.txt}</p>
+   <label>Nota (opcional)</label><input id="ak_n" placeholder="Qué se hizo o por qué se pospone">
+   <label>Ocultar hasta</label><input id="ak_h" type="date" value="${sug}">
+   <p class="note" style="margin:8px 0 0">La alerta reaparece sola si llega esa fecha y sigue igual, o antes si la actividad cambia (por ejemplo, su fecha de entrega). Sin fecha, queda oculta hasta que la actividad cambie. No se modifica la actividad.</p>
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarAck('${pid}','${k}')">Guardar</button></div>`);
+}
+function guardarAck(pid,k){
+  const p=proy(pid);if(!p)return;const a=alertasProy(p).find(x=>x.k===k);if(!a)return;
+  const h=$("#ak_h").value;if(h&&h<hoyLocal()){alert("La fecha debe ser hoy o posterior");return;}
+  p.alertasAck=(p.alertasAck||[]).filter(x=>x.k!==k);
+  p.alertasAck.push({k,firma:a.firma,hasta:h,nota:$("#ak_n").value.trim(),ts:hoyLocal()});
+  save();closeModal();rerenderAlertas();
+}
+function reabrirAck(pid,k){const p=proy(pid);if(!p)return;p.alertasAck=(p.alertasAck||[]).filter(x=>x.k!==k);save();rerenderAlertas();}
 
 /* ===== DASHBOARD / SEGUIMIENTO SEMANAL ===== */
 function plannedPct(a){
@@ -845,7 +947,7 @@ function renderMaestro(){
      <div class="chip"><div class="k">Actividades bloqueadas</div><div class="v" style="color:var(--s-bloq)">${bloqTot}</div></div>
      <div class="chip"><div class="k">Próxima entrega</div><div class="v" style="font-size:14px">${prox?esc(prox.nombre)+" · "+prox.inauguracion:"—"}</div></div>
    </div>
-   ${(()=>{const all=[];ps.forEach(p=>alertasProy(p).forEach(a=>all.push({...a,txt:`<span class="mono" style="color:var(--txt3)">[${esc(p.nombre)}]</span> `+a.txt})));return renderAlertasCard(all,"Alertas y automatizaciones");})()}
+   ${renderAlertasPortafolio(ps)}
    ${leyenda()}
    <div class="board">
      <div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Proyectos</h3><span class="count">${ps.length} filas</span></div>
@@ -923,7 +1025,8 @@ function subTabla(p){
       <div class="addrow" onclick="modalNuevaActividad('${g}')">+ Agregar actividad a ${esc(g)}</div>
     </div>`;
   }).join("");
-  return renderAlertasCard(alertasProy(p),"Alertas y automatizaciones")+leyenda()+boards;
+  const al=alertasDe(p);
+  return renderAlertasCard(al.abiertas,"Alertas y automatizaciones",al.cerradas,p.id)+leyenda()+boards;
 }
 
 /* --- SUB: GANTT --- */
