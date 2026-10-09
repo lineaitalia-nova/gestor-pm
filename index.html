@@ -1008,7 +1008,7 @@ function subTabla(p){
       return `<tr>
         <td class="grpbar"><span class="gbar" style="background:${col}"></span></td>
         <td style="width:24px;text-align:center;color:var(--txt3);font-family:'DM Mono';font-size:11px">${(a._num||'')}</td>
-        <td class="cellpad"><span class="actv actv-edit" onclick="modalEditarActividad('${a.id}')" title="Editar actividad">${esc(a.actividad)}</span>${a.sede?` <span style="font-size:10px;background:var(--panel);color:var(--txt3);border:1px solid var(--line);border-radius:99px;padding:1px 7px;margin-left:6px;white-space:nowrap">${esc(a.sede)}</span>`:""}</td>
+        <td class="cellpad"><span class="actv actv-edit" onclick="modalEditarActividad('${a.id}')" title="Editar actividad">${esc(a.actividad)}</span>${a.sede?` <span style="font-size:10px;background:var(--panel);color:var(--txt3);border:1px solid var(--line);border-radius:99px;padding:1px 7px;margin-left:6px;white-space:nowrap">${esc((areasDe(p).find(x=>x.id===a.area)||{}).nombre||a.sede)}</span>`:""}</td>
         <td class="cellpad"><span class="person">${ava(a.resp)}<span>${esc(a.resp)}</span></span></td>
         <td class="datecell"><input type="date" value="${a.inicio||''}" onchange="updAct('${a.id}','inicio',this.value)"></td>
         <td class="datecell"><input type="date" value="${a.entrega||''}" onchange="updAct('${a.id}','entrega',this.value)">${atras?'<div style="font-size:9px;color:var(--s-bloq);padding-left:10px;font-weight:700">ATRASADA</div>':''}</td>
@@ -1037,7 +1037,7 @@ let GVISTA="sede";
 function setGVista(v){GVISTA=v;renderProyecto();}
 function subGantt(p){
   if(!p.actividades.some(a=>a.sede))return subGanttActs(p);
-  const sw=`<div class="famfilt" style="margin-bottom:12px"><button class="${GVISTA==="sede"?"on":""}" onclick="setGVista('sede')">Por sede</button><button class="${GVISTA==="act"?"on":""}" onclick="setGVista('act')">Por actividad</button></div>`;
+  const sw=`<div class="famfilt" style="margin-bottom:12px"><button class="${GVISTA==="sede"?"on":""}" onclick="setGVista('sede')">Por sede</button><button class="${GVISTA==="act"?"on":""}" onclick="setGVista('act')">Por actividad</button>${GVISTA==="act"?"":`<span style="width:14px"></span><button onclick="gexpTodo('${p.id}',true)">Expandir todo</button><button onclick="gexpTodo('${p.id}',false)">Contraer todo</button>`}</div>`;
   return sw+(GVISTA==="act"?subGanttActs(p):subGanttSede(p));
 }
 function subGanttActs(p){
@@ -1069,65 +1069,112 @@ function subGanttActs(p){
     </div></div>`+leyenda();
 }
 
-/* --- GANTT POR SEDE (oct 2026) ---
-   Lo usa subGantt() cuando el proyecto tiene al menos una actividad con sede; si no, se ve el Gantt por actividad.
-   Una fila por sede (campo opcional `sede` de la actividad), con segmentos de color por fase,
-   % real a la izquierda y fecha / "en N d" a la derecha. Lo que no tiene sede va en "General".
-   Solo lee: no cambia ningun dato. El % usa avanceProy(), el mismo criterio que el resto de la app. */
-function sedesProy(p){const s=[...sedesDe(p)];p.actividades.forEach(a=>{if(a.sede&&!s.includes(a.sede))s.push(a.sede);});return s;}
-function optsSede(p,sel){return `<option value="">General (sin sede)</option>`+sedesProy(p).map(s=>`<option ${s===sel?"selected":""}>${esc(s)}</option>`).join("");}
+/* --- GANTT POR CIUDAD Y AREA (oct 2026) ---
+   Lo usa subGantt() cuando el proyecto tiene al menos una actividad asignada (campo opcional `sede`).
+   Nivel 1: una fila por ciudad (mas "Programa general" arriba y "Sin asignar" al final si aplica).
+   Nivel 2: al hacer clic en una ciudad se despliegan sus areas (registros de Concentrado > Areas y sucursales).
+   Asignacion de una actividad: `sede` = ciudad (o "Programa general") y `area` = id del registro de area
+   (opcional). Todo es opcional y de solo lectura aqui: este Gantt no cambia ningun dato.
+   % = promedio del avance ponderado por duracion en dias (minimo 1); sin fechas no entra al % ni a la barra. */
+const SEDE_GENERAL="Programa general";
+const sinAcc=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+function ciudadDe(n){return String(n||"").replace(/\s+(nivel\s*\d+|n\d+|pb|pa|anexo|planta\s+\w+)$/i,"").trim();}
+function areasDe(p){return (p.concentrado&&p.concentrado.areas)||[];}
+function ciudadesProy(p){const s=[];areasDe(p).forEach(a=>{const c=ciudadDe(a.nombre);if(c&&!s.includes(c))s.push(c);});
+  p.actividades.forEach(a=>{if(a.sede&&a.sede!==SEDE_GENERAL&&!s.includes(a.sede))s.push(a.sede);});return s;}
+function valAsig(p,a){if(a.sede===SEDE_GENERAL)return "g";if(a.area&&areasDe(p).some(x=>x.id===a.area))return "a:"+a.area;if(a.sede)return "c:"+a.sede;return "";}
+function optsAsig(p,sel){
+  let h=`<option value="">Sin asignar</option><option value="g" ${sel==="g"?"selected":""}>Programa general</option>`;
+  ciudadesProy(p).forEach(c=>{const ars=areasDe(p).filter(x=>ciudadDe(x.nombre)===c);
+    h+=`<optgroup label="${esc(c)}"><option value="${esc("c:"+c)}" ${sel==="c:"+c?"selected":""}>${esc(c)} (toda la sede)</option>${ars.map(x=>`<option value="a:${esc(x.id)}" ${sel==="a:"+x.id?"selected":""}>${esc(x.nombre)}</option>`).join("")}</optgroup>`;});
+  return h;}
+function aplicaAsig(p,a,v){delete a.sede;delete a.area;
+  if(v==="g")a.sede=SEDE_GENERAL;
+  else if(v&&v.startsWith("c:"))a.sede=v.slice(2);
+  else if(v&&v.startsWith("a:")){const ar=areasDe(p).find(x=>x.id===v.slice(2));if(ar){a.area=ar.id;a.sede=ciudadDe(ar.nombre);}}}
+// Sugerencia a partir del texto de la actividad (solo en "Nueva actividad"; el usuario la puede cambiar).
+function sugerirAsig(p,txt){
+  const t=sinAcc(txt),cs=ciudadesProy(p).filter(c=>t.includes(sinAcc(c)));
+  if(cs.length>1)return "g"; if(!cs.length)return "";
+  const c=cs[0],ars=areasDe(p).filter(x=>ciudadDe(x.nombre)===c);
+  const tok=[[/\b(n1|nivel\s*1)\b/,"nivel 1"],[/\b(n2|nivel\s*2)\b/,"nivel 2"],[/\b(n3|nivel\s*3)\b/,"nivel 3"],[/\bpb\b/,"pb"],[/\bpa\b/,"pa"],[/\banexo\b/,"anexo"]].filter(([r])=>r.test(t)).map(([,n])=>n);
+  if(tok.length===1){const ar=ars.find(x=>sinAcc(x.nombre).endsWith(tok[0]));if(ar)return "a:"+ar.id;}
+  return "c:"+c;}
+function sugerirAsigNueva(){const p=proy(CUR),s=$("#m_sede");if(!p||!s||s.value)return;
+  const v=sugerirAsig(p,$("#m_act").value);
+  if(v&&[...s.options].some(o=>o.value===v)){s.value=v;const h=$("#m_sug");if(h){h.style.display="";h.textContent="Sugerida por el texto de la actividad; cámbiala si no aplica.";}}}
+let GEXP={};   // ciudades desplegadas por proyecto: solo en memoria (sobrevive al cambiar de pestana)
+function gexpToggle(pid,c){const o=GEXP[pid]=GEXP[pid]||{};if(o[c])delete o[c]; else o[c]=1; renderProyecto();}
+function gexpTodo(pid,abrir){const p=proy(pid);GEXP[pid]={};if(abrir&&p)ciudadesProy(p).forEach(c=>{GEXP[pid][c]=1;});renderProyecto();}
 function subGanttSede(p){
+  const dia=86400000,dur=a=>Math.max(1,Math.round((new Date(a.entrega)-new Date(a.inicio))/dia));
+  const conFechas=p.actividades.filter(a=>a.inicio&&a.entrega),sinFechas=p.actividades.length-conFechas.length;
   const cab=extra=>`<div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Gantt</h3>${extra||""}</div>`;
-  const conFechas=p.actividades.filter(a=>a.inicio&&a.entrega);
-  const sinFechas=p.actividades.length-conFechas.length;
   if(!conFechas.length)return `<div class="board">${cab()}<div style="padding:20px;color:var(--txt3)">Agrega fechas de inicio y entrega a las actividades para ver el Gantt.</div></div>`;
   const min=new Date(Math.min(...conFechas.map(a=>+new Date(a.inicio))));
   const max=new Date(Math.max(...conFechas.map(a=>+new Date(a.entrega))));
-  const span=Math.max(1,(max-min)/86400000);
-  const pct=dt=>((new Date(dt)-min)/86400000)/span*100;
+  const span=Math.max(1,(max-min)/dia);
+  const pct=dt=>((new Date(dt)-min)/dia)/span*100;
   const hoy=new Date(new Date().toDateString());
-  const hoyPct=(hoy>=min&&hoy<=max)?((hoy-min)/86400000)/span*100:null;
+  const hoyPct=(hoy>=min&&hoy<=max)?((hoy-min)/dia)/span*100:null;
   const meses=[];let cur=new Date(min.getFullYear(),min.getMonth(),1);
   while(cur<=max){meses.push(new Date(cur));cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
   const mesLbl=meses.map(m=>`<div style="flex:1;font-size:10.5px;color:var(--txt3);border-left:1px solid var(--line);padding-left:6px;font-family:'DM Mono'">${m.toLocaleDateString("es-MX",{month:"short",year:"2-digit"})}</div>`).join("");
-  const mapa={};conFechas.forEach(a=>{const k=a.sede||"";(mapa[k]=mapa[k]||[]).push(a);});
-  const primero=arr=>Math.min(...arr.map(a=>+new Date(a.inicio)));
-  const claves=Object.keys(mapa).filter(k=>k).sort((x,y)=>primero(mapa[x])-primero(mapa[y]));
-  if(mapa[""])claves.push("");
+  const pctPond=arr=>{const t=arr.filter(a=>a.inicio&&a.entrega);if(!t.length)return null;
+    const W=t.reduce((s,a)=>s+dur(a),0);return Math.round(t.reduce((s,a)=>s+dur(a)*(a.avance||0),0)/W);};
+  const semaf=v=>v==null?"var(--txt3)":(v>=90?"var(--s-term)":(v>=40?"var(--s-proc)":"var(--s-bloq)"));
+  const PEND=["No iniciado","Listo para comenzar"];
   const faseIdx=f=>{const i=FASE_ORDEN.indexOf(f);return i<0?99:i;};
-  const usadas=new Set();
-  const filas=claves.map(k=>{
-    const arr=mapa[k];
-    const todas=p.actividades.filter(a=>(a.sede||"")===k);
-    const av=avanceProy({actividades:todas});
-    const finIso=arr.map(a=>a.entrega).sort().pop();
-    const terminada=todas.every(a=>a.estado==="Terminado");
+  const modaResp=arr=>{const c={};arr.forEach(a=>{if(a.resp&&a.resp!=="Por definir")c[a.resp]=(c[a.resp]||0)+1;});
+    const k=Object.entries(c).sort((x,y)=>y[1]-x[1]);return k.length?k[0][0]+(k.length>1?` +${k.length-1}`:""):"—";};
+  const finDe=arr=>{const t=arr.filter(a=>a.inicio&&a.entrega);return t.length?t.map(a=>a.entrega).sort().pop():"";};
+  const pastilla=(finIso,pc)=>{
+    if(!finIso)return `<span style="color:var(--txt3)">—</span>`;
     const d=diasA(finIso);
-    const etiqueta=terminada?`<span style="color:var(--s-term)">✓ terminada</span>`:(d<0?`<span style="color:var(--s-bloq)">hace ${-d} d</span>`:(d===0?"hoy":`en ${d} d`));
-    const fases=[...new Set(arr.map(a=>a.fase))].sort((x,y)=>faseIdx(x)-faseIdx(y));
+    if(d<0&&(pc==null||pc<100))return `<span style="background:#FDE3E7;color:#D6304A;border-radius:99px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap">atrasada ${-d} d</span>`;
+    if(d>=0&&d<=15&&(pc==null||pc<100))return `<span style="background:#FFF1D6;color:#B86E00;border-radius:99px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap">${d===0?"hoy":"en "+d+" d"}</span>`;
+    return `<span>${fechaCorta(finIso)}</span>`;};
+  const ex=GEXP[p.id]||{};
+  // Una fila (ciudad, area, programa general o sin asignar)
+  const fila=o=>{
+    const tareas=o.tareas,pc=pctPond(tareas),t=tareas.filter(a=>a.inicio&&a.entrega);
+    const fases=[...new Set(t.map(a=>a.fase))].sort((x,y)=>faseIdx(x)-faseIdx(y));
     const segs=fases.map(f=>{
-      usadas.add(f);
-      const g=arr.filter(a=>a.fase===f);
-      const i0=g.map(a=>a.inicio).sort()[0],e0=g.map(a=>a.entrega).sort().pop();
-      const l=pct(i0),w=Math.max(1.2,pct(e0)-l);
-      return `<div style="position:absolute;top:3px;height:16px;left:${l}%;width:${w}%;background:${GRUPO_COLOR[f]||"#8A90B0"};border-radius:4px;min-width:6px;border:1px solid var(--card);box-sizing:border-box;opacity:.92" title="${esc(f)} · ${g.length} actividad${g.length>1?"es":""} · ${i0} → ${e0}"></div>`;
-    }).join("");
-    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <div style="width:170px;flex-shrink:0;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(k||"General")}">${k?esc(k):"General"}<span style="display:block;font-weight:400;font-size:10.5px;color:var(--txt3)">${todas.length} actividad${todas.length>1?"es":""}</span></div>
-      <div style="width:42px;flex-shrink:0;text-align:right;font-family:'DM Mono';font-size:12px;font-weight:600">${av}%</div>
-      <div style="flex:1;position:relative;height:22px;background:var(--panel);border-radius:5px">
-        ${hoyPct!=null?`<div style="position:absolute;top:-4px;bottom:-4px;left:${hoyPct}%;width:2px;background:var(--s-bloq);z-index:3"></div>`:""}
-        ${segs}
-      </div>
-      <div style="width:88px;flex-shrink:0;font-size:11px;color:var(--txt2);font-family:'DM Mono'">${fechaCorta(finIso)}<span style="display:block;font-size:10.5px">${etiqueta}</span></div>
-    </div>`;
-  }).join("");
-  const lyd=`<div class="legend">${[...usadas].sort((x,y)=>faseIdx(x)-faseIdx(y)).map(f=>`<span class="l"><span class="sw" style="background:${GRUPO_COLOR[f]||"#8A90B0"}"></span>${esc(f)}</span>`).join("")}</div>`;
+      const g=t.filter(a=>a.fase===f),i0=g.map(a=>a.inicio).sort()[0],e0=g.map(a=>a.entrega).sort().pop();
+      const l=pct(i0),w=Math.max(1.2,pct(e0)-l),pend=g.every(a=>PEND.includes(a.estado)),pf=pctPond(g);
+      const tip=[f+(pend?" (pendiente)":""),fechaCorta(i0)+" → "+fechaCorta(e0),g.length+" tarea"+(g.length>1?"s":"")+" · "+pf+"% de la etapa"];
+      if(o.nota)tip.push("",o.nota);
+      return `<div style="position:absolute;top:3px;height:16px;left:${l}%;width:${w}%;background:${GRUPO_COLOR[f]||"#8A90B0"};border-radius:4px;min-width:6px;border:1px solid var(--card);box-sizing:border-box;opacity:${pend?.4:.95}" title="${esc(tip.join("\n"))}"></div>`;}).join("");
+    const finIso=finDe(tareas);
+    const carril=t.length?`${hoyPct!=null?`<div style="position:absolute;top:-4px;bottom:-4px;left:${hoyPct}%;width:2px;background:var(--s-bloq);z-index:3"></div>`:""}${segs}`
+      :`<div style="padding:3px 10px;font-size:11px;color:var(--txt3)" title="${esc(o.nota||"")}">${esc(o.vacio||"sin tareas")}</div>`;
+    const nombre=o.hijos?`<span onclick="gexpToggle('${p.id}',this.dataset.c)" data-c="${esc(o.clave)}" style="cursor:pointer" title="${o.abierta?"Contraer":"Desplegar"} áreas">${o.abierta?"▾":"▸"} <b>${esc(o.nombre)}</b></span>`:`<b>${esc(o.nombre)}</b>`;
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:${o.hijo?5:8}px">
+      <div style="width:220px;flex-shrink:0;box-sizing:border-box;padding-left:${o.hijo?24:0}px;font-size:${o.hijo?12:12.5}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.color?`<span style="display:inline-block;width:4px;height:14px;border-radius:2px;background:${o.color};vertical-align:middle;margin-right:6px"></span>`:""}${nombre}<span style="display:block;font-weight:400;font-size:10.5px;color:var(--txt3);${o.hijo?"padding-left:10px":""}" title="${esc(o.sub||"")}">${o.sub||""}</span></div>
+      <div style="width:46px;flex-shrink:0;text-align:right;font-family:'DM Mono';font-size:12px;font-weight:700;color:${semaf(pc)}">${pc==null?"—":pc+"%"}</div>
+      <div style="flex:1;position:relative;height:22px;background:var(--panel);border-radius:5px">${carril}</div>
+      <div style="width:104px;flex-shrink:0;font-size:11px;color:var(--txt2);font-family:'DM Mono'" title="${finIso?esc(finIso):""}">${t.length?pastilla(finIso,pc):`<span style="color:var(--txt3)">${esc(o.fechaTxt||"—")}</span>`}</div>
+    </div>`;};
+  const gen=p.actividades.filter(a=>a.sede===SEDE_GENERAL);
+  const sinA=p.actividades.filter(a=>!a.sede);
+  const ciudades=ciudadesProy(p).map(c=>({c,tareas:p.actividades.filter(a=>a.sede===c)}))
+    .sort((x,y)=>(finDe(x.tareas)||"9999").localeCompare(finDe(y.tareas)||"9999"));
+  let html=fila({nombre:SEDE_GENERAL,sub:esc(modaResp(gen)),tareas:gen,vacio:"sin tareas de programa general"});
+  ciudades.forEach(({c,tareas})=>{
+    const ars=areasDe(p).filter(x=>ciudadDe(x.nombre)===c),abierta=!!ex[c];
+    html+=fila({nombre:c,clave:c,sub:esc(modaResp(tareas)),tareas,hijos:ars.length>0,abierta,vacio:"sin tareas asignadas"});
+    if(abierta)ars.forEach(a=>{
+      const ts=tareas.filter(x=>x.area===a.id);
+      html+=fila({hijo:true,nombre:a.nombre,color:AEST[a.estatus]||"#C4C4C4",
+        sub:`<span style="color:${AEST[a.estatus]||"#C4C4C4"}">●</span> ${esc(a.estatus||"")}${a.armado?" · "+esc(a.armado):""}`,
+        tareas:ts,nota:a.nota||"",vacio:`sin tareas ligadas · ${Number(a.piezas||0).toLocaleString("es-MX")} pza`,fechaTxt:a.entrega});});});
+  if(sinA.length)html+=fila({nombre:"Sin asignar",sub:esc(modaResp(sinA)),tareas:sinA});
+  const lyd=`<div class="legend">${FASE_ORDEN.map(f=>`<span class="l"><span class="sw" style="background:${GRUPO_COLOR[f]||"#8A90B0"}"></span>${esc(f)}</span>`).join("")}<span class="l"><span class="sw" style="background:#8A90B0;opacity:.4"></span>color claro = etapa pendiente</span></div>`;
   return `<div class="board">${cab(hoyPct!=null?'<span class="count" style="color:var(--s-bloq)">línea roja = hoy</span>':"")}
     <div style="padding:16px 18px">
-      <div style="display:flex;gap:10px;margin-bottom:10px"><div style="width:170px;flex-shrink:0"></div><div style="width:42px;flex-shrink:0"></div><div style="flex:1;display:flex">${mesLbl}</div><div style="width:88px;flex-shrink:0"></div></div>
-      ${filas}
-      ${sinFechas?`<div style="font-size:11.5px;color:var(--txt3);margin-top:6px">${sinFechas} actividad${sinFechas>1?"es":""} sin fechas no se dibuja${sinFechas>1?"n":""}.</div>`:""}
+      <div style="display:flex;gap:10px;margin-bottom:10px"><div style="width:220px;flex-shrink:0"></div><div style="width:46px;flex-shrink:0"></div><div style="flex:1;display:flex">${mesLbl}</div><div style="width:104px;flex-shrink:0"></div></div>
+      ${html}
+      ${sinFechas?`<div style="font-size:11.5px;color:var(--txt3);margin-top:6px">${sinFechas} actividad${sinFechas>1?"es":""} sin fechas no se dibuja${sinFechas>1?"n":""} ni cuenta${sinFechas>1?"n":""} en el %.</div>`:""}
     </div></div>`+lyd;
 }
 
@@ -1716,7 +1763,7 @@ function modalEditarActividad(id){
    <label>Actividad</label><input id="e_act" value="${esc(a.actividad)}">
    <label>Responsable</label><input id="e_resp" value="${esc(a.resp)}">
    <label>Fase</label><select id="e_fase">${FASE_ORDEN.map(f=>`<option ${f===a.fase?'selected':''}>${f}</option>`).join("")}</select>
-   <label>Sede</label><select id="e_sede">${optsSede((findActProj(id)||{}).p||proy(CUR),a.sede)}</select>
+   <label>Sede / área</label><select id="e_sede">${(()=>{const pp=(findActProj(id)||{}).p||proy(CUR);return optsAsig(pp,valAsig(pp,a));})()}</select>
    <label>Estado</label><select id="e_est">${ESTADOS.map(x=>`<option ${x===a.estado?'selected':''}>${x}</option>`).join("")}</select>
    <label>Prioridad</label><select id="e_prio">${Object.keys(PRIORIDAD).map(x=>`<option ${x===a.prioridad?'selected':''}>${x}</option>`).join("")}</select>
    <label>Inicio</label><input id="e_ini" type="date" value="${a.inicio||''}">
@@ -1731,7 +1778,7 @@ function guardarEdicionActividad(id){
   const a=findAct(id);if(!a)return;
   const t=$("#e_act").value.trim();if(!t){alert("La actividad no puede quedar vacía");return;}
   a.actividad=t; a.resp=$("#e_resp").value||"Por definir"; a.fase=$("#e_fase").value;
-  const sd=$("#e_sede").value; if(sd)a.sede=sd; else delete a.sede;
+  aplicaAsig((findActProj(id)||{}).p||proy(CUR),a,$("#e_sede").value);
   a.estado=$("#e_est").value; a.prioridad=$("#e_prio").value;
   a.inicio=$("#e_ini").value; a.entrega=$("#e_ent").value;
   const av=parseInt($("#e_av").value); a.avance=isNaN(av)?a.avance:Math.max(0,Math.min(100,av));
@@ -1753,11 +1800,11 @@ $("#modalBg").addEventListener("click",e=>{if(e.target.id==="modalBg")closeModal
 
 function modalNuevaActividad(fase){
   openModal(`<h3>Nueva actividad · ${esc(fase)}</h3>
-   <label>Actividad</label><input id="m_act" placeholder="¿Qué hay que hacer?">
+   <label>Actividad</label><input id="m_act" placeholder="¿Qué hay que hacer?" onchange="sugerirAsigNueva()">
    <label>Responsable</label><input id="m_resp" placeholder="Área o persona">
    <label>Inicio</label><input id="m_ini" type="date">
    <label>Entrega</label><input id="m_ent" type="date">
-   <label>Sede</label><select id="m_sede">${optsSede(proy(CUR),"")}</select>
+   <label>Sede / área</label><select id="m_sede">${optsAsig(proy(CUR),"")}</select><div id="m_sug" class="note" style="margin:-4px 0 6px;display:none"></div>
    <label>Estado</label><select id="m_est">${ESTADOS.map(e=>`<option>${e}</option>`).join("")}</select>
    <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarActividad('${esc(fase)}')">Guardar</button></div>`);
 }
@@ -1765,7 +1812,7 @@ function guardarActividad(fase){
   const a=$("#m_act").value.trim();if(!a){alert("Escribe la actividad");return;}
   const p=proy(CUR);
   const na=act(fase,a,$("#m_resp").value||"Por definir",$("#m_ini").value,$("#m_ent").value,$("#m_est").value);
-  const sd=$("#m_sede").value; if(sd)na.sede=sd;
+  aplicaAsig(p,na,$("#m_sede").value);
   p.actividades.push(na);
   save();closeModal();renderProyecto();
 }
