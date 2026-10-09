@@ -1009,6 +1009,19 @@ function setCFiltro(f){CFILTRO=f;renderProyecto();}
 function pct(ll,b){b=Number(b||0);if(!b)return 0;return Math.round(Number(ll||0)/b*100);}
 function sumBloque(cs){return cs.reduce((a,c)=>({b:a.b+Number(c.base||0),l:a.l+Number(c.llevamos||0)}),{b:0,l:0});}
 function barra(p_,col){return `<div class="avance"><div class="avbar"><div class="avfill" style="width:${Math.min(100,p_)}%;background:${col}"></div></div><span class="avnum">${p_}%</span></div>`;}
+/* Ocultar listas del Concentrado (oct 2026). Preferencia por proyecto y por bloque ("fab", "com", "areas"),
+   solo en este navegador (localStorage) y en memoria; NUNCA dentro de STATE, que se sincroniza con
+   Firebase. Ocultar no cambia ningun dato: la tabla y "+ Agregar" desaparecen, el titulo, el conteo y la barra se quedan. */
+const KEY_CONC=KEY+"_concOculto";
+let CONC_OCULTO=(()=>{try{const o=JSON.parse(localStorage.getItem(KEY_CONC)||"{}");return (o&&typeof o==="object")?o:{};}catch(e){return {};}})();
+function concOculto(pid,b){return !!(CONC_OCULTO[pid]&&CONC_OCULTO[pid][b]);}
+function toggleConc(pid,b){
+  const o=CONC_OCULTO[pid]=CONC_OCULTO[pid]||{};
+  if(o[b])delete o[b]; else o[b]=1;
+  if(!Object.keys(o).length)delete CONC_OCULTO[pid];
+  try{Object.keys(CONC_OCULTO).length?localStorage.setItem(KEY_CONC,JSON.stringify(CONC_OCULTO)):localStorage.removeItem(KEY_CONC);}catch(e){Falla.registrar('recordar las listas ocultas del concentrado',e);}
+  renderProyecto();}
+const btnConc=(pid,b,oc,extra)=>`<button class="btn-ghost" style="padding:4px 12px;font-size:12px;${extra||""}" onclick="toggleConc('${pid}','${b}')">${oc?"Mostrar":"Ocultar"}</button>`;
 function subConcentrado(p){
   const C=p.concentrado||{areas:[],conceptos:[]};
   const fab=C.conceptos.filter(c=>c.tipo==="fab"), com=C.conceptos.filter(c=>c.tipo==="com");
@@ -1032,17 +1045,18 @@ function subConcentrado(p){
 
   const bloque=(titulo,color,cs,resumen,ppct,leyenda)=>{
     const vis=CFILTRO==="abiertos"?cs.filter(c=>Number(c.llevamos||0)<Number(c.base||0)):cs;
+    const bk=cs===fab?"fab":"com", oc=concOculto(p.id,bk);
     return `<div class="board">
-      <div class="board-head"><span class="gc" style="background:${color}"></span><h3>${titulo}</h3>
+      <div class="board-head"${oc?' style="border-bottom:none"':""}><span class="gc" style="background:${color}"></span><h3>${titulo}</h3>
         <span class="count">${vis.length} de ${cs.length} conceptos · ${resumen.l.toLocaleString("es-MX")} / ${resumen.b.toLocaleString("es-MX")} pza</span>
-        <div style="margin-left:auto;min-width:150px">${barra(ppct,color)}</div></div>
-      <p class="note" style="margin:0;padding:9px 18px;border-bottom:1px solid var(--line)">${leyenda}</p>
+        <div style="margin-left:auto;min-width:150px">${barra(ppct,color)}</div>${btnConc(p.id,bk,oc,"margin-left:10px")}</div>
+      ${oc?"":`<p class="note" style="margin:0;padding:9px 18px;border-bottom:1px solid var(--line)">${leyenda}</p>
       <table class="tbl"><thead><tr><th style="width:11px"></th><th style="width:110px">Clave</th><th>Concepto</th>
         <th style="text-align:right;width:90px">Programado</th><th style="text-align:right;width:100px">Llevamos</th>
         <th style="text-align:right;width:80px">Falta</th><th style="width:140px">%</th>
         <th style="text-align:center;width:140px">Estatus</th><th style="width:36px"></th></tr></thead>
       <tbody>${vis.map(filaC).join("")||`<tr><td colspan="9" class="cellpad" style="color:var(--txt3)">Sin conceptos en este filtro.</td></tr>`}</tbody></table>
-      <div class="addrow" onclick="modalNuevoConcepto('${p.id}','${cs===fab?"fab":"com"}')">+ Agregar concepto ${cs===fab?"de fabricación":"comercializado"}</div>
+      <div class="addrow" onclick="modalNuevoConcepto('${p.id}','${cs===fab?"fab":"com"}')">+ Agregar concepto ${cs===fab?"de fabricación":"comercializado"}</div>`}
     </div>`;};
 
   const areas=C.areas.map(a=>{const col=AEST[a.estatus]||"#C4C4C4";
@@ -1058,6 +1072,7 @@ function subConcentrado(p){
     </tr>`;}).join("");
   const totPz=C.areas.reduce((a,x)=>a+Number(x.piezas||0),0);
   const sinLanzar=C.areas.filter(a=>a.estatus==="Sin lanzar").length;
+  const ocA=concOculto(p.id,"areas");
 
   return `<div class="board" style="border:none;box-shadow:none;background:transparent;margin-bottom:6px">
     <p class="sub" style="margin:0">Concentrado de avance: qué se programó, qué llevamos y qué falta. Separa lo que <b>fabrica planta</b> de lo que es <b>producto comercializado</b>, porque son dos cadenas distintas y un solo porcentaje las esconde.${C.fuente?`<br><span style="font-size:11.5px;color:var(--txt3)">Fuente: ${esc(C.fuente)}</span>`:""}</p></div>
@@ -1073,15 +1088,15 @@ function subConcentrado(p){
     <button class="${CFILTRO==="abiertos"?"on":""}" onclick="setCFiltro('abiertos')">Solo lo que falta · ${abiertos.length}</button>
   </div>
   <div class="board">
-    <div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Áreas y sucursales</h3>
+    <div class="board-head"${ocA?' style="border-bottom:none"':""}><span class="gc" style="background:var(--accent)"></span><h3>Áreas y sucursales</h3>
       <span class="count">${C.areas.length} áreas · ${totPz.toLocaleString("es-MX")} pza</span>
-      ${sinLanzar?`<span class="pill r" style="margin-left:10px">${sinLanzar} sin lanzar</span>`:""}</div>
-    <p class="note" style="margin:0;padding:9px 18px;border-bottom:1px solid var(--line)">La fecha de entrega es la comprometida con el cliente. El avance se prioriza contra la fecha más próxima, no contra el total.</p>
+      ${sinLanzar?`<span class="pill r" style="margin-left:10px">${sinLanzar} sin lanzar</span>`:""}${btnConc(p.id,"areas",ocA,"margin-left:auto")}</div>
+    ${ocA?"":`<p class="note" style="margin:0;padding:9px 18px;border-bottom:1px solid var(--line)">La fecha de entrega es la comprometida con el cliente. El avance se prioriza contra la fecha más próxima, no contra el total.</p>
     <table class="tbl"><thead><tr><th style="width:11px"></th><th>Área / sucursal</th><th style="width:120px">Pedido</th>
       <th style="text-align:right;width:80px">Piezas</th><th style="width:130px">Entrega</th><th style="width:160px">Armado</th>
       <th style="text-align:center;width:130px">Estatus</th><th style="width:36px"></th></tr></thead>
     <tbody>${areas||`<tr><td colspan="8" class="cellpad" style="color:var(--txt3)">Sin áreas registradas.</td></tr>`}</tbody></table>
-    <div class="addrow" onclick="modalNuevaArea('${p.id}')">+ Agregar área o sucursal</div>
+    <div class="addrow" onclick="modalNuevaArea('${p.id}')">+ Agregar área o sucursal</div>`}
   </div>
   ${bloque("Fabricación en planta","#2563EB",fab,sf,pf,"Lo que produce Línea Italia. Su avance lo reporta planta y se cierra con entrada a CEDI.")}
   ${bloque("Producto comercializado","#00A896",com,sc,pc,"Compra o importación. No pasa por programación de planta, así que nunca tendrá fecha de producción: su cierre es la recepción confirmada.")}`;
