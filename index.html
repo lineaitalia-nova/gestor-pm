@@ -859,12 +859,13 @@ function renderMaestro(){
 function renderProyecto(){
   const p=proy(CUR);if(!p)return;
   const av=avanceProy(p),d=diasA(p.inauguracion);
-  const tabs=[["tabla","Tabla principal"],["concentrado","Concentrado"],["gantt","Gantt"],["kanban","Kanban"],["calendario","Calendario"],["riesgos","Riesgos"],["bitacora","Hallazgos"],["informes","Informes"],["dashboard","Dashboard"]];
+  const tabs=[["tabla","Tabla principal"],["concentrado","Concentrado"],["gantt","Gantt"],["ganttsede","Gantt por sede"],["kanban","Kanban"],["calendario","Calendario"],["riesgos","Riesgos"],["bitacora","Hallazgos"],["informes","Informes"],["dashboard","Dashboard"]];
   let body="";
   if(SUB==="concentrado")body=subConcentrado(p);
   else if(SUB==="informes")body=subInformes(p);
   else if(SUB==="tabla")body=subTabla(p);
   else if(SUB==="gantt")body=subGantt(p);
+  else if(SUB==="ganttsede")body=subGanttSede(p);
   else if(SUB==="kanban")body=subKanban(p);
   else if(SUB==="calendario")body=subCalendario(p);
   else if(SUB==="riesgos")body=subRiesgos(p);
@@ -906,7 +907,7 @@ function subTabla(p){
       return `<tr>
         <td class="grpbar"><span class="gbar" style="background:${col}"></span></td>
         <td style="width:24px;text-align:center;color:var(--txt3);font-family:'DM Mono';font-size:11px">${(a._num||'')}</td>
-        <td class="cellpad"><span class="actv actv-edit" onclick="modalEditarActividad('${a.id}')" title="Editar actividad">${esc(a.actividad)}</span></td>
+        <td class="cellpad"><span class="actv actv-edit" onclick="modalEditarActividad('${a.id}')" title="Editar actividad">${esc(a.actividad)}</span>${a.sede?` <span style="font-size:10px;background:var(--panel);color:var(--txt3);border:1px solid var(--line);border-radius:99px;padding:1px 7px;margin-left:6px;white-space:nowrap">${esc(a.sede)}</span>`:""}</td>
         <td class="cellpad"><span class="person">${ava(a.resp)}<span>${esc(a.resp)}</span></span></td>
         <td class="datecell"><input type="date" value="${a.inicio||''}" onchange="updAct('${a.id}','inicio',this.value)"></td>
         <td class="datecell"><input type="date" value="${a.entrega||''}" onchange="updAct('${a.id}','entrega',this.value)">${atras?'<div style="font-size:9px;color:var(--s-bloq);padding-left:10px;font-weight:700">ATRASADA</div>':''}</td>
@@ -954,6 +955,68 @@ function subGantt(p){
       <div style="display:flex;gap:10px;margin-bottom:10px"><div style="width:210px;flex-shrink:0"></div><div style="flex:1;display:flex">${mesLbl}</div></div>
       ${rows}
     </div></div>`+leyenda();
+}
+
+/* --- SUB: GANTT POR SEDE (oct 2026) ---
+   Una fila por sede (campo opcional `sede` de la actividad), con segmentos de color por fase,
+   % real a la izquierda y fecha / "en N d" a la derecha. Lo que no tiene sede va en "General".
+   Solo lee: no cambia ningun dato. El % usa avanceProy(), el mismo criterio que el resto de la app. */
+function sedesProy(p){const s=[...sedesDe(p)];p.actividades.forEach(a=>{if(a.sede&&!s.includes(a.sede))s.push(a.sede);});return s;}
+function optsSede(p,sel){return `<option value="">General (sin sede)</option>`+sedesProy(p).map(s=>`<option ${s===sel?"selected":""}>${esc(s)}</option>`).join("");}
+function subGanttSede(p){
+  const cab=extra=>`<div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Gantt por sede</h3>${extra||""}</div>`;
+  if(!p.actividades.some(a=>a.sede))return `<div class="board">${cab()}<div style="padding:20px;color:var(--txt3);font-size:13px;line-height:1.5">Ninguna actividad tiene sede asignada todavía. Abre una actividad (clic en su nombre en la Tabla principal) y elige su <b>Sede</b> para verla aquí. Lo que no tiene sede se agrupa en «General».</div></div>`;
+  const conFechas=p.actividades.filter(a=>a.inicio&&a.entrega);
+  const sinFechas=p.actividades.length-conFechas.length;
+  if(!conFechas.length)return `<div class="board">${cab()}<div style="padding:20px;color:var(--txt3)">Agrega fechas de inicio y entrega a las actividades para ver el Gantt.</div></div>`;
+  const min=new Date(Math.min(...conFechas.map(a=>+new Date(a.inicio))));
+  const max=new Date(Math.max(...conFechas.map(a=>+new Date(a.entrega))));
+  const span=Math.max(1,(max-min)/86400000);
+  const pct=dt=>((new Date(dt)-min)/86400000)/span*100;
+  const hoy=new Date(new Date().toDateString());
+  const hoyPct=(hoy>=min&&hoy<=max)?((hoy-min)/86400000)/span*100:null;
+  const meses=[];let cur=new Date(min.getFullYear(),min.getMonth(),1);
+  while(cur<=max){meses.push(new Date(cur));cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
+  const mesLbl=meses.map(m=>`<div style="flex:1;font-size:10.5px;color:var(--txt3);border-left:1px solid var(--line);padding-left:6px;font-family:'DM Mono'">${m.toLocaleDateString("es-MX",{month:"short",year:"2-digit"})}</div>`).join("");
+  const mapa={};conFechas.forEach(a=>{const k=a.sede||"";(mapa[k]=mapa[k]||[]).push(a);});
+  const primero=arr=>Math.min(...arr.map(a=>+new Date(a.inicio)));
+  const claves=Object.keys(mapa).filter(k=>k).sort((x,y)=>primero(mapa[x])-primero(mapa[y]));
+  if(mapa[""])claves.push("");
+  const faseIdx=f=>{const i=FASE_ORDEN.indexOf(f);return i<0?99:i;};
+  const usadas=new Set();
+  const filas=claves.map(k=>{
+    const arr=mapa[k];
+    const todas=p.actividades.filter(a=>(a.sede||"")===k);
+    const av=avanceProy({actividades:todas});
+    const finIso=arr.map(a=>a.entrega).sort().pop();
+    const terminada=todas.every(a=>a.estado==="Terminado");
+    const d=diasA(finIso);
+    const etiqueta=terminada?`<span style="color:var(--s-term)">✓ terminada</span>`:(d<0?`<span style="color:var(--s-bloq)">hace ${-d} d</span>`:(d===0?"hoy":`en ${d} d`));
+    const fases=[...new Set(arr.map(a=>a.fase))].sort((x,y)=>faseIdx(x)-faseIdx(y));
+    const segs=fases.map(f=>{
+      usadas.add(f);
+      const g=arr.filter(a=>a.fase===f);
+      const i0=g.map(a=>a.inicio).sort()[0],e0=g.map(a=>a.entrega).sort().pop();
+      const l=pct(i0),w=Math.max(1.2,pct(e0)-l);
+      return `<div style="position:absolute;top:3px;height:16px;left:${l}%;width:${w}%;background:${GRUPO_COLOR[f]||"#8A90B0"};border-radius:4px;min-width:6px;border:1px solid var(--card);box-sizing:border-box;opacity:.92" title="${esc(f)} · ${g.length} actividad${g.length>1?"es":""} · ${i0} → ${e0}"></div>`;
+    }).join("");
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="width:170px;flex-shrink:0;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(k||"General")}">${k?esc(k):"General"}<span style="display:block;font-weight:400;font-size:10.5px;color:var(--txt3)">${todas.length} actividad${todas.length>1?"es":""}</span></div>
+      <div style="width:42px;flex-shrink:0;text-align:right;font-family:'DM Mono';font-size:12px;font-weight:600">${av}%</div>
+      <div style="flex:1;position:relative;height:22px;background:var(--panel);border-radius:5px">
+        ${hoyPct!=null?`<div style="position:absolute;top:-4px;bottom:-4px;left:${hoyPct}%;width:2px;background:var(--s-bloq);z-index:3"></div>`:""}
+        ${segs}
+      </div>
+      <div style="width:88px;flex-shrink:0;font-size:11px;color:var(--txt2);font-family:'DM Mono'">${fechaCorta(finIso)}<span style="display:block;font-size:10.5px">${etiqueta}</span></div>
+    </div>`;
+  }).join("");
+  const lyd=`<div class="legend">${[...usadas].sort((x,y)=>faseIdx(x)-faseIdx(y)).map(f=>`<span class="l"><span class="sw" style="background:${GRUPO_COLOR[f]||"#8A90B0"}"></span>${esc(f)}</span>`).join("")}</div>`;
+  return `<div class="board">${cab(hoyPct!=null?'<span class="count" style="color:var(--s-bloq)">línea roja = hoy</span>':"")}
+    <div style="padding:16px 18px">
+      <div style="display:flex;gap:10px;margin-bottom:10px"><div style="width:170px;flex-shrink:0"></div><div style="width:42px;flex-shrink:0"></div><div style="flex:1;display:flex">${mesLbl}</div><div style="width:88px;flex-shrink:0"></div></div>
+      ${filas}
+      ${sinFechas?`<div style="font-size:11.5px;color:var(--txt3);margin-top:6px">${sinFechas} actividad${sinFechas>1?"es":""} sin fechas no se dibuja${sinFechas>1?"n":""}.</div>`:""}
+    </div></div>`+lyd;
 }
 
 /* --- SUB: KANBAN --- */
@@ -1526,6 +1589,7 @@ function modalEditarActividad(id){
    <label>Actividad</label><input id="e_act" value="${esc(a.actividad)}">
    <label>Responsable</label><input id="e_resp" value="${esc(a.resp)}">
    <label>Fase</label><select id="e_fase">${FASE_ORDEN.map(f=>`<option ${f===a.fase?'selected':''}>${f}</option>`).join("")}</select>
+   <label>Sede</label><select id="e_sede">${optsSede((findActProj(id)||{}).p||proy(CUR),a.sede)}</select>
    <label>Estado</label><select id="e_est">${ESTADOS.map(x=>`<option ${x===a.estado?'selected':''}>${x}</option>`).join("")}</select>
    <label>Prioridad</label><select id="e_prio">${Object.keys(PRIORIDAD).map(x=>`<option ${x===a.prioridad?'selected':''}>${x}</option>`).join("")}</select>
    <label>Inicio</label><input id="e_ini" type="date" value="${a.inicio||''}">
@@ -1540,6 +1604,7 @@ function guardarEdicionActividad(id){
   const a=findAct(id);if(!a)return;
   const t=$("#e_act").value.trim();if(!t){alert("La actividad no puede quedar vacía");return;}
   a.actividad=t; a.resp=$("#e_resp").value||"Por definir"; a.fase=$("#e_fase").value;
+  const sd=$("#e_sede").value; if(sd)a.sede=sd; else delete a.sede;
   a.estado=$("#e_est").value; a.prioridad=$("#e_prio").value;
   a.inicio=$("#e_ini").value; a.entrega=$("#e_ent").value;
   const av=parseInt($("#e_av").value); a.avance=isNaN(av)?a.avance:Math.max(0,Math.min(100,av));
@@ -1565,13 +1630,16 @@ function modalNuevaActividad(fase){
    <label>Responsable</label><input id="m_resp" placeholder="Área o persona">
    <label>Inicio</label><input id="m_ini" type="date">
    <label>Entrega</label><input id="m_ent" type="date">
+   <label>Sede</label><select id="m_sede">${optsSede(proy(CUR),"")}</select>
    <label>Estado</label><select id="m_est">${ESTADOS.map(e=>`<option>${e}</option>`).join("")}</select>
    <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarActividad('${esc(fase)}')">Guardar</button></div>`);
 }
 function guardarActividad(fase){
   const a=$("#m_act").value.trim();if(!a){alert("Escribe la actividad");return;}
   const p=proy(CUR);
-  p.actividades.push(act(fase,a,$("#m_resp").value||"Por definir",$("#m_ini").value,$("#m_ent").value,$("#m_est").value));
+  const na=act(fase,a,$("#m_resp").value||"Por definir",$("#m_ini").value,$("#m_ent").value,$("#m_est").value);
+  const sd=$("#m_sede").value; if(sd)na.sede=sd;
+  p.actividades.push(na);
   save();closeModal();renderProyecto();
 }
 function modalNuevoProyecto(){
