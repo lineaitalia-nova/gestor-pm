@@ -113,6 +113,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 .delbtn{width:24px;height:24px;border-radius:6px;color:var(--txt3);font-size:12px;opacity:0;transition:.15s}
 .mrow:hover .delbtn{opacity:1}
 .delbtn:hover{background:var(--s-bloq);color:#fff}
+.editbtn{width:24px;height:24px;border-radius:6px;color:var(--txt3);font-size:13px;opacity:.55;transition:.15s}
+.mrow:hover .editbtn{opacity:1}
+.editbtn:hover{background:var(--accent);color:#fff}
 .tbl .mrow td{padding-top:2px;padding-bottom:2px}
 .tbl .airow td{padding-top:5px;padding-bottom:5px}
 .tbl .airow .cellpad{padding-top:12px;padding-bottom:12px}
@@ -934,7 +937,7 @@ function renderMaestro(){
       <td class="cellpad mono">${p.valor?money0(p.valor):"—"}</td>
       <td class="cellpad mono">${p.inauguracion||"—"}${d!=null?` <span style="color:${d<0?'var(--s-bloq)':'var(--txt3)'}">(${d<0?'vencido':d+'d'})</span>`:""}</td>
       <td class="cellpad" style="text-align:center">${bloqueados(p)?`<span style="color:var(--s-bloq);font-weight:700">${bloqueados(p)}</span>`:'<span style="color:var(--txt3)">0</span>'}</td>
-      <td style="text-align:center"><button class="delbtn" title="Eliminar proyecto" onclick="event.stopPropagation();eliminarProyecto('${p.id}')">✕</button></td>
+      <td style="text-align:center;white-space:nowrap"><button class="editbtn" title="Editar proyecto" onclick="event.stopPropagation();modalEditarProyecto('${p.id}')">✎</button><button class="delbtn" title="Eliminar proyecto" onclick="event.stopPropagation();eliminarProyecto('${p.id}')">✕</button></td>
     </tr>`;
   }).join("");
   $("#v-maestro").innerHTML=`
@@ -951,7 +954,7 @@ function renderMaestro(){
    ${leyenda()}
    <div class="board">
      <div class="board-head"><span class="gc" style="background:var(--accent)"></span><h3>Proyectos</h3><span class="count">${ps.length} filas</span></div>
-     <table class="tbl"><thead><tr><th style="width:11px"></th><th>Proyecto</th><th>Fase actual</th><th style="text-align:center">Estado</th><th>Avance</th><th>Valor</th><th>Entrega</th><th style="text-align:center">Bloq.</th><th style="width:36px"></th></tr></thead>
+     <table class="tbl"><thead><tr><th style="width:11px"></th><th>Proyecto</th><th>Fase actual</th><th style="text-align:center">Estado</th><th>Avance</th><th>Valor</th><th>Entrega</th><th style="text-align:center">Bloq.</th><th style="width:68px"></th></tr></thead>
      <tbody>${rows}</tbody></table>
      <div class="addrow" onclick="modalNuevoProyecto()">+ Agregar proyecto</div>
    </div>`;
@@ -979,6 +982,7 @@ function renderProyecto(){
      <div style="display:flex;gap:8px;flex-wrap:wrap">
        <button class="btn" onclick="modalReporteDia('${p.id}')">📝 Reporte del día</button>
        <button class="btn-ghost" onclick="modalHallazgoRapido('${p.id}')">＋ Hallazgo rápido</button>
+       <button class="btn-ghost" onclick="modalEditarProyecto('${p.id}')">✎ Editar proyecto</button>
      </div>
    </div>
    <div class="strip">
@@ -1836,6 +1840,34 @@ function guardarProyecto(){
     act("Cierre","Obtener conformidad","Project Manager","","","No iniciado")
    ]});
   save();closeModal();renderMaestro();
+}
+/* Editar proyecto (oct 2026). El nombre es la llave de los hallazgos (h.proyecto) y se copia en cada riesgo
+   (r.proyecto): al renombrar se actualizan esas referencias. No toca actividades, concentrado ni informes;
+   estado, fase y avance se siguen calculando solos. */
+function modalEditarProyecto(id){
+  const p=proy(id);if(!p)return;
+  openModal(`<h3>Editar proyecto</h3>
+   <label>Nombre</label><input id="ep_nom" value="${esc(p.nombre)}">
+   <label>Cliente / descripción</label><input id="ep_cli" value="${esc(p.cliente||"")}">
+   <label>Valor c/IVA (opcional)</label><input id="ep_val" type="number" min="0" step="any" value="${p.valor||""}" placeholder="0">
+   <label>Fecha de entrega</label><input id="ep_fec" type="date" value="${esc(p.inauguracion||"")}">
+   <div class="actions"><button class="btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn" onclick="guardarEdicionProyecto('${p.id}')">Guardar</button></div>`);
+}
+function guardarEdicionProyecto(id){
+  const p=proy(id);if(!p)return;
+  const n=$("#ep_nom").value.trim();if(!n){alert("Escribe el nombre");return;}
+  if(STATE.proyectos.some(x=>x.id!==id&&String(x.nombre).trim().toLowerCase()===n.toLowerCase())){alert(`Ya existe otro proyecto llamado "${n}".`);return;}
+  const v=$("#ep_val").value,val=v===""?0:Number(v);
+  if(isNaN(val)||val<0){alert("El valor debe ser un número mayor o igual a 0");return;}
+  const viejo=p.nombre;
+  p.cliente=$("#ep_cli").value.trim();p.valor=val;p.inauguracion=$("#ep_fec").value||"";
+  if(n!==viejo){
+    p.nombre=n;
+    (STATE.hallazgos||[]).forEach(h=>{if(h.proyecto===viejo)h.proyecto=n;});
+    (p.riesgos||[]).forEach(r=>{if(r.proyecto===viejo)r.proyecto=n;});
+  }
+  save();closeModal();renderSidebar();
+  if(VACT==="proyecto")renderProyecto(); else renderMaestro();
 }
 function eliminarProyecto(id){
   const p=proy(id);if(!p)return;
